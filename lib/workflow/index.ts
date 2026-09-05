@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto';
 import type { Case, Draft, Option, RouteScreening, Task, VerificationEvent } from '@/lib/dashboard/contracts';
 import { assembleDraft } from '@/lib/drafting';
 import { screenRoute } from '@/lib/rules/rules.v1';
-import { patchCase } from '@/lib/store';
+import { getCase,patchCase } from '@/lib/store';
+import { VERIFICATION_EVENT_LABEL, type VerificationEvent as SharedVerificationEvent } from '@/lib/contracts';
 export interface Workflow { route:RouteScreening;tasks:Task[];draft:Draft;option:Option|null;verification:VerificationEvent[]; }
 export function createTasks(c:Case):Task[] {
  const task=(id:string,title:string,purpose:string,assertionId:string,requiredMaterial:string[],dependencies:string[]=[]):Task=>({id,title,purpose,assertionId,requiredMaterial,dependencies,status:'Not started',sourceCaseVersion:c.version});
@@ -24,3 +25,37 @@ export function appendVerification(c:Case,input:Omit<VerificationEvent,'id'|'cas
  return event;
 }
 export function clearWorkflow(owner:string){workflows.delete(owner);}
+
+/**
+ * The verification record for FR11, drawn from both halves.
+ *
+ * appendVerification writes dashboard events into the shared record as well as
+ * the workflow store, but the intake and extraction pipeline writes only to the
+ * shared record - so reading the workflow store alone showed every draft edit
+ * and no evidence of how any fact got there. FR11 wants the record to show
+ * which parts were AI-drafted and which facts and sources were used, and
+ * extraction is the largest AI contribution in the product.
+ *
+ * The shared record is the source of truth; workflow entries that already
+ * mirror one are dropped by id.
+ */
+const ACTION_FOR:Record<SharedVerificationEvent['kind'],VerificationEvent['action']>={
+ ai_drafted:'generated',ai_extracted:'generated',ai_suggested:'generated',assertion_withheld:'generated',
+ user_corrected:'edited',user_confirmed:'reviewed',user_reviewed:'reviewed',
+};
+const AI_KINDS=new Set(['ai_drafted','ai_extracted','ai_suggested','assertion_withheld']);
+
+export function verificationRecord(c:Case):VerificationEvent[] {
+ const own=getWorkflow(c).verification;
+ const mirrored=new Set(own.map(e=>e.id));
+ const shared=getCase().verificationEvents.filter(e=>!mirrored.has(e.id)).map((e):VerificationEvent=>({
+  id:e.id,caseId:c.id,actorId:c.ownerId,timestamp:e.at,
+  action:ACTION_FOR[e.kind]??'reviewed',
+  description:e.note??`${VERIFICATION_EVENT_LABEL[e.kind]} — ${e.affectedOutput.replace(':',' ')}`,
+  sourceCaseVersion:Math.max(1,e.caseVersion),
+  sourceRefs:e.usedFactIds.map(id=>({kind:'fact' as const,id})),
+  fieldId:e.affectedOutput,
+  aiDrafted:AI_KINDS.has(e.kind),
+ }));
+ return [...own,...shared].sort((a,b)=>a.timestamp.localeCompare(b.timestamp));
+}
