@@ -46,3 +46,6 @@ next-env.d.ts
 # test artefacts
 test-results/
 playwright-report/
+
+# isolated feature worktrees
+.worktrees/
