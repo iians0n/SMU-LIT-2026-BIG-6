@@ -71,6 +71,41 @@ export class ModelUnavailableError extends Error {
   }
 }
 
+/**
+ * A chat turn that may call tools.
+ *
+ * Exposed separately from complete() because the agent needs the raw message
+ * objects back - tool calls have to be appended to the transcript and answered
+ * before the next turn, and flattening them to a string would lose that.
+ */
+export async function chatWithTools(params: {
+  messages: unknown[];
+  tools: unknown[];
+  tier?: "fast" | "heavy";
+  temperature?: number;
+  maxTokens?: number;
+}): Promise<{ message: { role: string; content: string | null; tool_calls?: unknown[] } }> {
+  const cfg = modelConfig();
+  const model = params.tier === "fast" ? cfg.fastModel : cfg.heavyModel;
+  try {
+    const res = await client().chat.completions.create({
+      model,
+      temperature: params.temperature ?? 0.3,
+      max_tokens: params.maxTokens ?? 900,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      messages: params.messages as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tools: params.tools as any,
+    });
+    const message = res.choices[0]?.message;
+    if (!message) throw new ModelUnavailableError(`${model} returned no message`);
+    return { message: message as { role: string; content: string | null; tool_calls?: unknown[] } };
+  } catch (err) {
+    if (err instanceof ModelUnavailableError) throw err;
+    throw new ModelUnavailableError(`${model} request failed`, err);
+  }
+}
+
 export interface CompleteOptions {
   /** Which tier. Default "fast". */
   tier?: "fast" | "heavy";
