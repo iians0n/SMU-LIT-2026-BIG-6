@@ -17,7 +17,14 @@ interface Turn {
 }
 
 const OPENER =
-  "Let's fill this quickly. In one message, send: your full name, ID, contact and address; the other side's name, whether they are a person or business, and their address; what you bought or agreed, the amount you are claiming, the exact date involved, what went wrong, and what you want.\n\nUse any order. If you do not know something, say so and I will set it aside.";
+  "Let's get your claim ready. Tell me these basics in one message:\n\n• About you: name, ID, contact and address\n• Other side: name, person or business, and address\n• What happened: what you agreed, amount claimed, date, problem and what you want\n\nUse any order. Say “I don't know” for anything you do not have.";
+
+function formGroupName(name: string): string {
+  if (name.startsWith('A.')) return 'About you';
+  if (name.startsWith('B.')) return 'Other side';
+  if (name.startsWith('C.')) return 'Your claim';
+  return 'Needed when filing';
+}
 
 /**
  * Recording is done with MediaRecorder and transcribed by Whisper on the
@@ -403,18 +410,19 @@ function Chat() {
                 event.target.value = '';
               }}
             />
-            <button type="button" className="chat-icon" onClick={() => fileInput.current?.click()} disabled={busy} aria-label="Add a document">
-              <Paperclip size={22} aria-hidden="true" />
+            <button type="button" className="chat-tool" onClick={() => fileInput.current?.click()} disabled={busy} aria-label="Add a document">
+              <Paperclip size={19} aria-hidden="true" /><span>Add file</span>
             </button>
             <button
               type="button"
-              className={`chat-icon ${live ? 'on' : ''}`}
+              className={`chat-tool ${live ? 'on' : ''}`}
               onClick={toggleLive}
               disabled={busy || mic === 'transcribing'}
               aria-label={live ? 'Stop talking' : 'Talk instead of typing'}
               title={live ? 'Stop talking' : 'Talk instead of typing'}
             >
-              {live ? <Square size={20} aria-hidden="true" /> : <Mic size={22} aria-hidden="true" />}
+              {live ? <Square size={18} aria-hidden="true" /> : <Mic size={19} aria-hidden="true" />}
+              <span>{live ? 'Stop' : 'Speak'}</span>
             </button>
             <button type="submit" className="chat-send" disabled={busy || !draft.trim()}>
               <Send size={20} aria-hidden="true" /> Send
@@ -425,19 +433,13 @@ function Chat() {
       </div>
 
       <aside className="chat-side">
-        <div className="row" style={{ alignItems: 'baseline' }}>
-          <h2 style={{ margin: 0 }}>Your claim form</h2>
-          <span className="form-count">{form ? `${form.filled} of ${form.total}` : ''}</span>
+        <div className="form-panel-heading">
+          <div>
+            <h2>Your details</h2>
+            <p>Fills automatically as you talk.</p>
+          </div>
+          <span className="form-count">{form ? `${form.filled}/${form.total}` : ''}</span>
         </div>
-        <div className="row" style={{ marginTop: 2 }}>
-          <button type="button" className="start-over" onClick={() => void startOver()} disabled={busy}>
-            <RotateCcw size={14} aria-hidden="true" /> Start a new case
-          </button>
-        </div>
-        <p className="small muted" style={{ margin: '4px 0 10px' }}>
-          The real CJTS sections, filling in as we talk. Nothing goes in without
-          something to point at.
-        </p>
         {form && (
           <div
             className="form-progress"
@@ -456,9 +458,7 @@ function Chat() {
             <div className="form-complete-title">
               <CheckCircle2 size={18} aria-hidden="true" /> Details collected
             </div>
-            <p>Review the result, check your files, then download the PDF for your CJTS handoff.</p>
-            <Link href="/chronology">Review details <ArrowRight size={15} aria-hidden="true" /></Link>
-            <Link href="/evidence">Check evidence <ArrowRight size={15} aria-hidden="true" /></Link>
+            <Link className="form-primary-link" href="/chronology">Review your answers <ArrowRight size={15} aria-hidden="true" /></Link>
             <Link href="/prepare">Download PDF <ArrowRight size={15} aria-hidden="true" /></Link>
           </div>
         )}
@@ -466,57 +466,56 @@ function Chat() {
         {!form ? (
           <p className="muted">Loading…</p>
         ) : (
-          form.groups.map((group) => (
-            <div key={group.name} className="form-group">
-              <h3>{group.name}</h3>
-              {group.fields.map((f) => (
-                <div
-                  key={f.key}
-                  className={`form-field form-${f.status}${justFilled.has(f.key) ? ' form-just' : ''}`}
-                >
-                  <span className="form-label">
-                    {f.label}
-                    {f.required && f.status !== 'filled' && <em> · needed</em>}
-                  </span>
-                  {f.status === 'filled' && (
-                    <>
-                      <strong>{f.value}</strong>
-                      <span className="form-source">from {f.source}</span>
-                    </>
-                  )}
-                  {f.status === 'unconfirmed' && (
-                    <>
-                      <strong>{f.value}</strong>
-                      <span className="form-source">waiting for you to confirm this</span>
-                    </>
-                  )}
-                  {f.status === 'missing' && <span className="form-help">{f.help}</span>}
-                  {f.status === 'from_cjts' && <span className="form-help">{f.help}</span>}
+          form.groups.map((group) => {
+            const required = group.fields.filter((field) => field.required && field.status !== 'from_cjts');
+            const completed = required.filter((field) => field.status === 'filled').length;
+            return (
+              <details key={group.name} className="form-group">
+                <summary>
+                  <span>{formGroupName(group.name)}</span>
+                  <span>{required.length ? `${completed}/${required.length}` : 'Later'}</span>
+                </summary>
+                <div className="form-group-fields">
+                  {group.fields.map((f) => (
+                    <div
+                      key={f.key}
+                      className={`form-field form-${f.status}${justFilled.has(f.key) ? ' form-just' : ''}`}
+                    >
+                      <span className="form-label">{f.label}</span>
+                      {f.status === 'filled' ? (
+                        <>
+                          <strong>{f.value}</strong>
+                          <span className="form-source">Source: {f.source}</span>
+                        </>
+                      ) : f.status === 'unconfirmed' ? (
+                        <>
+                          <strong>{f.value}</strong>
+                          <span className="form-help">Please check this</span>
+                        </>
+                      ) : (
+                        <span className="form-help">
+                          {f.status === 'from_cjts' ? 'Added later in CJTS' : 'Not added yet'}
+                        </span>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          ))
+              </details>
+            );
+          })
         )}
 
-        <div className="side-rule" style={{ margin: '18px 0' }} />
-        {/* Where the labels come from, so anyone can check the mapping rather
-            than trust it. There is no downloadable claim form - CJTS is an
-            online portal - so this is a worksheet, never a copy of one. */}
-        <p className="small muted">
-          Section names and fields are taken from the{' '}
-          <a href={FORM_SOURCE.url} target="_blank" rel="noreferrer">
-            {FORM_SOURCE.title}
-          </a>{' '}
-          ({FORM_SOURCE.pages}, retrieved {FORM_SOURCE.retrieved}). You still fill the claim in
-          on CJTS itself — there is no form to download.
-        </p>
-        <p className="small muted">
-          Check and change everything on <Link href="/chronology">the review page</Link>, then see
-          what your files back up on <Link href="/evidence">the evidence page</Link>.
-        </p>
-        <Link className="guide-secondary" style={{ marginTop: 12 }} href="/prepare">
-          Open the full pack
-        </Link>
+        <details className="form-about">
+          <summary>About this worksheet</summary>
+          <p>
+            It follows the{' '}
+            <a href={FORM_SOURCE.url} target="_blank" rel="noreferrer">official CJTS guide</a>{' '}
+            ({FORM_SOURCE.pages}). It prepares your information but does not file anything.
+          </p>
+        </details>
+        <button type="button" className="start-over" onClick={() => void startOver()} disabled={busy}>
+          <RotateCcw size={14} aria-hidden="true" /> Start a new case
+        </button>
       </aside>
     </div>
   );

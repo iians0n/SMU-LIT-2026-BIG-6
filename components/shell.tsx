@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   BookOpen,
   Check,
+  ChevronDown,
   CircleHelp,
   ClipboardCheck,
   FileArchive,
@@ -23,19 +24,19 @@ import { useEffect, useRef, useState } from 'react';
 import { useCase } from '@/components/case-provider';
 
 const primary = [
-  ['/', 'Talk it through', MessagesSquare, ''],
-  ['/documents', 'Your documents', FolderOpen, '1'],
-  ['/chronology', 'Check the facts', UserRound, '2'],
-  ['/evidence', 'What your files show', FileSearch, '3'],
-  ['/route', 'Check the filing route', Route, '4'],
-  ['/options', 'Next steps', ClipboardCheck, '5'],
-  ['/prepare', 'Your pack', FileArchive, '6'],
+  ['/', 'Start', MessagesSquare],
+  ['/documents', 'Add documents', FolderOpen],
+  ['/chronology', 'Review details', UserRound],
+  ['/prepare', 'Download PDF', FileArchive],
 ] as const;
 
-const secondary = [
-  ['/dashboard', 'Everything at once', LayoutGrid],
-  ['/sources', 'Official sources', BookOpen],
-  ['/verification', 'Verification record', ClipboardCheck],
+const more = [
+  ['/evidence', 'Evidence details', FileSearch],
+  ['/route', 'Filing check', Route],
+  ['/options', 'Choose next step', ClipboardCheck],
+  ['/dashboard', 'Case overview', LayoutGrid],
+  ['/sources', 'Help and sources', BookOpen],
+  ['/verification', 'Activity history', ClipboardCheck],
 ] as const;
 
 function Navigation({ close }: { close?: () => void }) {
@@ -70,9 +71,9 @@ function Navigation({ close }: { close?: () => void }) {
 
   return (
     <>
-      <div className="side-heading">Your preparation</div>
+      <div className="side-heading">Your checklist</div>
       <nav className="side-nav" aria-label="Preparation stages">
-        {primary.map(([href, label, Icon, step]) => {
+        {primary.map(([href, label, Icon]) => {
           const isComplete = complete(href);
           return (
             <Link
@@ -87,32 +88,37 @@ function Navigation({ close }: { close?: () => void }) {
                 {isComplete ? <Check size={15} strokeWidth={2.5} /> : <Icon size={18} />}
               </span>
               <span>{label}</span>
-              {step && <span className="side-step" aria-hidden="true">{step}</span>}
             </Link>
           );
         })}
       </nav>
 
+      <details className="side-more" open={more.some(([href]) => href === path) || undefined}>
+        <summary>
+          <span>More tools</span>
+          <ChevronDown size={16} aria-hidden="true" />
+        </summary>
+        <nav className="side-nav" aria-label="More tools">
+          {more.map(([href, label, Icon]) => (
+            <Link
+              key={href}
+              href={href}
+              onClick={close}
+              className="side-link side-link-secondary"
+              aria-current={path === href ? 'page' : undefined}
+            >
+              <span className="side-icon" aria-hidden="true"><Icon size={18} /></span>
+              <span>{label}</span>
+            </Link>
+          ))}
+        </nav>
+      </details>
+
       <div className="side-spacer" />
-      <div className="side-heading">Reference</div>
-      <nav className="side-nav" aria-label="Case references">
-        {secondary.map(([href, label, Icon]) => (
-          <Link
-            key={href}
-            href={href}
-            onClick={close}
-            className="side-link side-link-secondary"
-            aria-current={path === href ? 'page' : undefined}
-          >
-            <span className="side-icon" aria-hidden="true"><Icon size={18} /></span>
-            <span>{label}</span>
-          </Link>
-        ))}
-      </nav>
 
       <div className="privacy-note">
         <ShieldCheck size={17} aria-hidden="true" />
-        <span>Preparation only<br /><small>Nothing is filed or sent from here</small></span>
+        <span>Nothing is filed automatically.<br /><small>You choose what to download or send.</small></span>
       </div>
     </>
   );
@@ -122,7 +128,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const [mobile, setMobile] = useState(false);
   const menuClose = useRef<HTMLButtonElement>(null);
-  const current = [...primary, ...secondary].find(([href]) => href === path);
+  const current = [...primary, ...more].find(([href]) => href === path);
 
   useEffect(() => {
     if (!mobile) return;
@@ -181,10 +187,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             >
               <Menu size={21} aria-hidden="true" />
             </button>
-            <div>
-              <div className="topbar-product">Small claims preparation</div>
-              <div className="topbar-title">{current?.[1] ?? 'Casepath'}</div>
-            </div>
+            <div className="topbar-title">{current?.[1] ?? 'Casepath'}</div>
           </div>
           <div className="topbar-actions">
             <Link className="button button-quiet" href="/sources">
