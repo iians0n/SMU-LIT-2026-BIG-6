@@ -1,15 +1,15 @@
 /**
- * Hands-free listening.
+ * One-answer microphone capture.
  *
- * Press once and talk. Each time you pause, what you just said is transcribed
- * and sent, and the form fills — you never touch a button again. That turn
- * boundary is the whole trick: Whisper does not stream, so the natural unit is
- * "what you said between two pauses", which is also how people actually talk.
+ * Press once and talk. The first completed utterance is transcribed and sent.
+ * The caller then stops this session, so another answer always requires another
+ * deliberate microphone press. That prevents room audio or the assistant's
+ * response from becoming an accidental second turn.
  *
  * Silence is detected from the audio itself rather than by a fixed timer,
  * because a fixed timer either cuts people off mid-sentence or leaves long dead
- * air. The recorder is stopped and restarted per segment, which is what makes a
- * complete, decodable blob available at each boundary.
+ * air. The recorder is stopped at the turn boundary, which is what makes a
+ * complete, decodable blob available for transcription.
  */
 
 export interface LiveSessionCallbacks {
@@ -143,9 +143,6 @@ export class LiveSession {
     rec.onstop = async () => {
       const audio = new Blob(this.chunks, { type: rec.mimeType || "audio/webm" });
       this.chunks = [];
-      // Listening resumes immediately, so they can keep talking while the
-      // previous turn is still being answered.
-      if (!this.stopped) this.beginRecording();
       try {
         if (audio.size > 0) await this.cb.onSegment(audio);
       } finally {

@@ -66,7 +66,7 @@ function Chat() {
   const [busy, setBusy] = useState(false);
   const [available, setAvailable] = useState<boolean | null>(null);
   const [mic, setMic] = useState<MicState>("idle");
-  const [micConsent, setMicConsent] = useState(false);
+  const [showMicConsent, setShowMicConsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<DerivedForm | null>(null);
   /** Keys that changed on the last refresh, so they can flash as they land. */
@@ -76,6 +76,8 @@ function Chat() {
   const [live, setLive] = useState(false);
   const [level, setLevel] = useState(0);
   const session = useRef<LiveSession | null>(null);
+  /** The privacy explanation is shown once; later presses can start immediately. */
+  const micConsentGiven = useRef(false);
   /** Callbacks outlive renders, so the transcript is read from a ref not state. */
   const turnsRef = useRef<Turn[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
@@ -97,6 +99,10 @@ function Chat() {
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     endRef.current?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth' });
   }, [turns, busy]);
+
+  useEffect(() => {
+    turnsRef.current = turns;
+  }, [turns]);
 
   const refreshForm = useCallback(async () => {
     const res = await fetch('/api/form', { cache: 'no-store' });
@@ -133,6 +139,11 @@ function Chat() {
   const send = useCallback(async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || busy) return;
+    // A typed/upload turn also closes any open microphone before the reply.
+    session.current?.stop();
+    session.current = null;
+    setLive(false);
+    setLevel(0);
     const next: Turn[] = [...turns, { role: 'user', content: trimmed }];
     setTurns(next);
     setDraft('');
@@ -164,6 +175,12 @@ function Chat() {
    * box would just put a button back in the way.
    */
   const sendSpoken = useCallback(async (audio: Blob) => {
+    // Each press records exactly one answer. Release the microphone before
+    // uploading it, and never resume it after the assistant replies.
+    session.current?.stop();
+    session.current = null;
+    setLive(false);
+    setLevel(0);
     setMic('transcribing');
     try {
       const body = new FormData();
@@ -218,24 +235,39 @@ function Chat() {
     }
   }
 
-  function toggleLive() {
-    if (live) {
-      session.current?.stop();
-      session.current = null;
-      setLive(false);
-      setLevel(0);
-      return;
-    }
-    // Explained once, before the microphone is ever opened.
-    if (!micConsent) { setMicConsent(true); return; }
+  function stopListening() {
+    session.current?.stop();
+    session.current = null;
+    setLive(false);
+    setLevel(0);
+  }
+
+  function startListening() {
+    setError(null);
     const started = new LiveSession({
       onSegment: sendSpoken,
       onLevel: setLevel,
-      onError: (message) => { setError(message); setLive(false); },
+      onError: (message) => {
+        setError(message);
+        stopListening();
+      },
     });
     session.current = started;
     setLive(true);
     void started.start();
+  }
+
+  function toggleLive() {
+    if (live) {
+      stopListening();
+      return;
+    }
+    // Explained once, before the microphone is ever opened.
+    if (!micConsentGiven.current) {
+      setShowMicConsent(true);
+      return;
+    }
+    startListening();
   }
 
   async function upload(files: FileList) {
@@ -284,18 +316,22 @@ function Chat() {
           <div ref={endRef} />
         </div>
 
-        {micConsent && mic === 'idle' && (
+        {showMicConsent && mic === 'idle' && (
           <div className="mic-consent" role="dialog" aria-label="About recording">
             <p style={{ margin: 0 }}>
               <strong>Before you speak.</strong> Your recording is sent to our speech provider to be
-              turned into text, then discarded. We keep only the text, and it goes into the box
-              below for you to read and correct before you send it.
+              turned into text, then discarded. We keep only the text and use it as your next
+              answer. The microphone turns off after that answer.
             </p>
             <div className="chat-buttons" style={{ justifyContent: 'flex-start', marginTop: 12 }}>
-              <button type="button" className="chat-send" onClick={() => { setMicConsent(false); toggleLive(); }}>
+              <button type="button" className="chat-send" onClick={() => {
+                micConsentGiven.current = true;
+                setShowMicConsent(false);
+                startListening();
+              }}>
                 Start talking
               </button>
-              <button type="button" className="chat-icon" style={{ width: 'auto', padding: '0 18px' }} onClick={() => setMicConsent(false)}>
+              <button type="button" className="chat-icon" style={{ width: 'auto', padding: '0 18px' }} onClick={() => setShowMicConsent(false)}>
                 Not now
               </button>
             </div>
@@ -316,7 +352,7 @@ function Chat() {
                   ? 'Thinking…'
                   : level > 0.08
                     ? 'Listening…'
-                    : 'Go ahead — pause when you are done and I will pick it up'}
+                    : 'Go ahead — pause when you are done. Press the microphone again for your next answer.'}
             </span>
             <button type="button" className="chat-icon" onClick={toggleLive} aria-label="Stop talking">
               <Square size={18} />
@@ -364,6 +400,7 @@ function Chat() {
               type="button"
               className={`chat-icon ${live ? 'on' : ''}`}
               onClick={toggleLive}
+              disabled={busy || mic === 'transcribing'}
               aria-label={live ? 'Stop talking' : 'Talk instead of typing'}
               title={live ? 'Stop talking' : 'Talk instead of typing'}
             >

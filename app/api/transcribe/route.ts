@@ -9,6 +9,7 @@
  */
 
 import { ModelUnavailableError, modelConfig, transcribeAudio } from "@/lib/ai/client";
+import { isLikelySilenceHallucination } from "@/lib/voice/transcript";
 
 /** A minute of speech is plenty for one answer, and caps what a bad request costs. */
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
 
   try {
     const text = await transcribeAudio(audio);
-    if (!text) {
+    if (!text || isLikelySilenceHallucination(text)) {
       // Silence is not an error, but it must not look like one either.
       return Response.json({ text: "", empty: true });
     }
