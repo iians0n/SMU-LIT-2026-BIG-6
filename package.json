@@ -12,7 +12,8 @@
     "check:fixtures": "tsx scripts/check-fixtures.ts",
     "test:shared": "tsx --test \"lib/**/*.test.ts\"",
     "test:dashboard": "vitest run",
-    "test": "npm run test:shared && npm run test:dashboard"
+    "test": "npm run test:shared && npm run test:dashboard",
+    "demo": "tsx scripts/demo-run.ts"
   },
   "dependencies": {
     "jszip": "^3.10.1",
