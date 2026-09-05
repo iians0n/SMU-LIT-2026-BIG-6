@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, CircleAlert, Info, Pencil } from 'lucide-react';
 import { useCase } from '@/components/case-provider';
 import { ViewState } from '@/components/view-state';
@@ -24,7 +24,10 @@ import type { Case, Fact } from '@/lib/dashboard/contracts';
 function Welcome({ onStart }: { onStart: () => void }) {
   return (
     <div className="guide-card">
-      <p className="guide-eyebrow">Small claims — getting ready</p>
+      <div className="guide-stage" aria-label="Worked example, about twenty minutes">
+        <span>Worked example</span>
+        <span>About 20 minutes</span>
+      </div>
       <h1 className="guide-h1">Let&apos;s get your claim organised.</h1>
       <p className="guide-lead">
         We will ask what happened, look at any documents you have, and show you what they back
@@ -204,10 +207,31 @@ function StepPack() {
 
 function Guide() {
   const { record } = useCase();
-  const [step, setStep] = useState(-1);
+  const [step, setStep] = useState(() => {
+    if (typeof window === 'undefined') return -1;
+    const match = window.location.hash.match(/^#step-(\d)$/);
+    const next = match ? Number(match[1]) - 1 : -1;
+    return next >= 0 && next < STEPS.length ? next : -1;
+  });
+
+  useEffect(() => {
+    const syncFromUrl = () => {
+      const match = window.location.hash.match(/^#step-(\d)$/);
+      const next = match ? Number(match[1]) - 1 : -1;
+      setStep(next >= 0 && next < STEPS.length ? next : -1);
+    };
+    window.addEventListener('hashchange', syncFromUrl);
+    return () => window.removeEventListener('hashchange', syncFromUrl);
+  }, []);
+
+  function goToStep(next: number) {
+    setStep(next);
+    const url = next < 0 ? window.location.pathname : `${window.location.pathname}#step-${next + 1}`;
+    window.history.replaceState(null, '', url);
+  }
   if (!record) return null;
 
-  if (step < 0) return <Welcome onStart={() => setStep(0)} />;
+  if (step < 0) return <Welcome onStart={() => goToStep(0)} />;
 
   const current = STEPS[step];
   const body = [
@@ -221,30 +245,43 @@ function Guide() {
 
   return (
     <div className="guide-card">
-      <div className="guide-progress" aria-label={`Step ${step + 1} of ${STEPS.length}`}>
+      <div
+        className="guide-progress"
+        role="progressbar"
+        aria-label="Preparation progress"
+        aria-valuemin={1}
+        aria-valuemax={STEPS.length}
+        aria-valuenow={step + 1}
+        aria-valuetext={`Step ${step + 1} of ${STEPS.length}: ${current.title}`}
+      >
         {STEPS.map((s, i) => (
           <span key={s.slug} className={i <= step ? 'on' : ''} aria-hidden="true" />
         ))}
       </div>
-      <p className="guide-eyebrow">Step {step + 1} of {STEPS.length}</p>
+      <div className="guide-stage">
+        <span>Step {step + 1} of {STEPS.length}</span>
+        <span>{Math.round(((step + 1) / STEPS.length) * 100)}% viewed</span>
+      </div>
       <h1 className="guide-h1">{current.title}</h1>
       {body}
 
       <div className="guide-nav">
-        <button className="guide-secondary" onClick={() => setStep(step - 1)}>
+        <button className="guide-secondary" onClick={() => goToStep(step - 1)}>
           <ArrowLeft size={20} aria-hidden="true" /> {step === 0 ? 'Start over' : 'Back'}
         </button>
         {step < STEPS.length - 1 && (
-          <button className="guide-secondary" onClick={() => setStep(step + 1)}>
+          <button className="guide-secondary" onClick={() => goToStep(step + 1)}>
             Skip for now <ArrowRight size={20} aria-hidden="true" />
           </button>
         )}
       </div>
 
       <p className="guide-fineprint">
-        <Pencil size={15} aria-hidden="true" /> You can change anything later. Nothing is sent
-        anywhere until you decide.{' '}
-        <Link href="/dashboard">See everything at once instead</Link>
+        <Pencil size={15} aria-hidden="true" />
+        <span>
+          You can change anything later. Nothing is sent anywhere until you decide.{' '}
+          <Link href="/dashboard">See everything at once instead</Link>
+        </span>
       </p>
     </div>
   );

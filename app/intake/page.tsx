@@ -170,11 +170,13 @@ function VoiceIntake({ onSaved }: { onSaved: () => void }) {
       <label className="small muted" htmlFor="account">Your account, in your words</label>
       <textarea
         id="account"
+        name="account"
+        autoComplete="off"
         className="field"
         rows={9}
         value={transcript + (interim ? ` ${interim}` : '')}
         onChange={(e) => { setTranscript(e.target.value); setInterim(''); }}
-        placeholder="Start anywhere. What you agreed, what went wrong, what you want to happen."
+        placeholder="For example: We agreed to repairs in May, but…"
         style={{ width: '100%', marginTop: 6, lineHeight: 1.6 }}
       />
 
@@ -267,6 +269,8 @@ function Questions() {
           </p>
           <textarea
             className="field"
+            name="question-answer"
+            autoComplete="off"
             rows={4}
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}

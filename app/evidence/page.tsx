@@ -40,14 +40,13 @@ function Quote({ id, lookup, tone }: { id: string; lookup: ReturnType<typeof exc
         style={{
           margin: 0,
           padding: '10px 13px',
-          borderLeft: `3px solid ${tone === 'conflict' ? 'var(--warn, #b8860b)' : 'var(--line)'}`,
-          background: 'var(--surface-2, rgba(0,0,0,0.02))',
-          borderRadius: 6,
+          background: tone === 'conflict' ? 'var(--amber-soft)' : 'var(--surface-2)',
+          borderRadius: 12,
         }}
       >
         <p style={{ margin: 0, lineHeight: 1.5 }}>{excerpt.text}</p>
         <div className="small muted" style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
-          <FileText size={13} /> {excerpt.documentName} · page {excerpt.page}
+          <FileText size={13} aria-hidden="true" /> {excerpt.documentName} · page {excerpt.page}
         </div>
       </blockquote>
     </li>

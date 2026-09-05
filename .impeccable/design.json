@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-05T08:03:45Z",
+  "title": "Design System: Casepath",
+  "extensions": {
+    "colorMeta": {
+      "ink": { "role": "neutral", "displayName": "Case Ink", "canonical": "#1d1d1f", "tonalRamp": ["#1d1d1f", "#353537", "#4e4e51", "#6e6e73", "#929297", "#b8b8bd", "#d2d2d7", "#f5f5f7"] },
+      "text-secondary": { "role": "neutral", "displayName": "Quiet Graphite", "canonical": "#6e6e73", "tonalRamp": ["#1d1d1f", "#353537", "#4e4e51", "#6e6e73", "#929297", "#b8b8bd", "#d2d2d7", "#f5f5f7"] },
+      "divider": { "role": "neutral", "displayName": "Divider", "canonical": "#d2d2d7", "tonalRamp": ["#1d1d1f", "#353537", "#4e4e51", "#6e6e73", "#929297", "#b8b8bd", "#d2d2d7", "#f5f5f7"] },
+      "divider-soft": { "role": "neutral", "displayName": "Soft Divider", "canonical": "#e5e5ea", "tonalRamp": ["#1d1d1f", "#353537", "#4e4e51", "#6e6e73", "#929297", "#b8b8bd", "#e5e5ea", "#fafafc"] },
+      "canvas": { "role": "neutral", "displayName": "Desk Canvas", "canonical": "#f5f5f7", "tonalRamp": ["#1d1d1f", "#353537", "#4e4e51", "#6e6e73", "#929297", "#b8b8bd", "#d2d2d7", "#f5f5f7"] },
+      "surface": { "role": "neutral", "displayName": "Paper Surface", "canonical": "#ffffff", "tonalRamp": ["#202022", "#3b3b3e", "#5b5b60", "#7c7c82", "#a2a2a8", "#c8c8ce", "#e8e8ec", "#ffffff"] },
+      "surface-secondary": { "role": "neutral", "displayName": "Recessed Surface", "canonical": "#f0f0f2", "tonalRamp": ["#202022", "#39393c", "#56565a", "#76767b", "#99999f", "#bdbdc3", "#d8d8dd", "#f0f0f2"] },
+      "system-blue": { "role": "primary", "displayName": "System Blue", "canonical": "#0066cc", "tonalRamp": ["#001a3a", "#00366f", "#0052a5", "#0066cc", "#3184dc", "#71a9e8", "#b5d2f4", "#e8f2ff"] },
+      "system-blue-hover": { "role": "primary", "displayName": "Pressed Blue", "canonical": "#0055b3", "tonalRamp": ["#001630", "#002e63", "#004993", "#0055b3", "#2877cd", "#679de0", "#acc8ef", "#e4effc"] },
+      "system-blue-soft": { "role": "primary", "displayName": "Source Blue Wash", "canonical": "#e8f2ff", "tonalRamp": ["#001a3a", "#00366f", "#0052a5", "#0066cc", "#3184dc", "#71a9e8", "#b5d2f4", "#e8f2ff"] },
+      "status-green": { "role": "secondary", "displayName": "Verified Green", "canonical": "#1b6f3a", "tonalRamp": ["#082514", "#0d4022", "#145b30", "#1b6f3a", "#3b8c59", "#76b38b", "#b5dbc1", "#e8f5ec"] },
+      "status-green-soft": { "role": "secondary", "displayName": "Verified Wash", "canonical": "#e8f5ec", "tonalRamp": ["#082514", "#0d4022", "#145b30", "#1b6f3a", "#3b8c59", "#76b38b", "#b5dbc1", "#e8f5ec"] },
+      "caution-amber": { "role": "tertiary", "displayName": "Caution Amber", "canonical": "#8a4b00", "tonalRamp": ["#301800", "#502900", "#703c00", "#8a4b00", "#ad6a1d", "#d2914d", "#edbd86", "#fff3df"] },
+      "caution-amber-soft": { "role": "tertiary", "displayName": "Caution Wash", "canonical": "#fff3df", "tonalRamp": ["#301800", "#502900", "#703c00", "#8a4b00", "#ad6a1d", "#d2914d", "#edbd86", "#fff3df"] },
+      "critical-red": { "role": "tertiary", "displayName": "Critical Red", "canonical": "#b4232d", "tonalRamp": ["#3d090d", "#641016", "#8b1820", "#b4232d", "#cf4a53", "#e47f86", "#f3b9bd", "#fff0f1"] },
+      "critical-red-soft": { "role": "tertiary", "displayName": "Critical Wash", "canonical": "#fff0f1", "tonalRamp": ["#3d090d", "#641016", "#8b1820", "#b4232d", "#cf4a53", "#e47f86", "#f3b9bd", "#fff0f1"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Short page and guided-step titles." },
+      "headline": { "displayName": "Headline", "purpose": "Major record groups." },
+      "title": { "displayName": "Title", "purpose": "Row and panel headings." },
+      "body": { "displayName": "Body", "purpose": "Primary explanation and editable case content." },
+      "supporting": { "displayName": "Supporting", "purpose": "Metadata, provenance and qualifiers." },
+      "control": { "displayName": "Control", "purpose": "Compact buttons and actions." },
+      "label": { "displayName": "Label", "purpose": "Navigation groups, status and table headings." }
+    },
+    "shadows": [
+      { "name": "guided-sheet", "value": "0 18px 60px rgba(0, 0, 0, 0.08)", "purpose": "Focused step-by-step front door only." },
+      { "name": "floating-feedback", "value": "0 8px 28px rgba(0, 0, 0, 0.1)", "purpose": "Toasts and transient feedback." },
+      { "name": "drawer-edge", "value": "18px 0 60px rgba(0, 0, 0, 0.14)", "purpose": "Mobile navigation drawer." },
+      { "name": "blue-action", "value": "0 3px 10px rgba(0, 102, 204, 0.18)", "purpose": "Modest tactile cue for the primary action." }
+    ],
+    "motion": [
+      { "name": "state-change", "value": "140ms ease-out", "purpose": "Hover, focus and colour transitions." },
+      { "name": "press", "value": "100ms ease-out", "purpose": "Subtle 0.97 press response." },
+      { "name": "drawer-in", "value": "260ms cubic-bezier(.18,.82,.24,1)", "purpose": "Mobile drawer entry; removed under reduced motion." },
+      { "name": "guide-materialise", "value": "420ms cubic-bezier(.16,.84,.3,1)", "purpose": "One-time guided-sheet arrival; simplified under reduced motion." }
+    ],
+    "breakpoints": [
+      { "name": "compact-desktop", "value": "1050px" },
+      { "name": "single-column", "value": "860px" },
+      { "name": "mobile", "value": "640px" },
+      { "name": "narrow-mobile", "value": "420px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single action that advances the current decision.",
+      "html": "<button class=\"ds-button-primary\">Continue</button>",
+      "css": ".ds-button-primary{min-height:42px;display:inline-flex;align-items:center;justify-content:center;padding:0 17px;border:1px solid transparent;border-radius:999px;color:#fff;background:var(--blue,#0066cc);font:610 14px/1 -apple-system,BlinkMacSystemFont,\"SF Pro Text\",sans-serif;cursor:pointer;box-shadow:0 3px 10px rgba(0,102,204,.18);transition:background 140ms ease-out,transform 100ms ease-out,box-shadow 140ms ease-out}.ds-button-primary:hover{background:var(--blue-hover,#0055b3);box-shadow:0 5px 14px rgba(0,102,204,.24)}.ds-button-primary:focus-visible{outline:3px solid rgba(0,102,204,.55);outline-offset:3px}.ds-button-primary:active{transform:scale(.97)}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A reversible or supporting action beside the primary path.",
+      "html": "<button class=\"ds-button-secondary\">Check details</button>",
+      "css": ".ds-button-secondary{min-height:42px;display:inline-flex;align-items:center;justify-content:center;padding:0 17px;border:1px solid #b9c9db;border-radius:999px;color:var(--blue,#0066cc);background:var(--surface,#fff);font:610 14px/1 -apple-system,BlinkMacSystemFont,\"SF Pro Text\",sans-serif;cursor:pointer;transition:background 140ms ease-out,border-color 140ms ease-out,transform 100ms ease-out}.ds-button-secondary:hover{background:var(--blue-soft,#e8f2ff);border-color:#9ab8d8}.ds-button-secondary:focus-visible{outline:3px solid rgba(0,102,204,.55);outline-offset:3px}.ds-button-secondary:active{transform:scale(.97)}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "An opaque, plainly labelled field for user-controlled case content.",
+      "html": "<label class=\"ds-field-label\" for=\"ds-account\">Your account, in your words</label><textarea class=\"ds-field\" id=\"ds-account\" rows=\"3\" placeholder=\"For example: We agreed to repairs in May, but…\"></textarea>",
+      "css": ".ds-field-label{display:block;margin-bottom:6px;color:var(--muted,#6e6e73);font:400 13px/1.5 -apple-system,BlinkMacSystemFont,\"SF Pro Text\",sans-serif}.ds-field{width:100%;padding:13px 14px;border:1px solid #b8b8bd;border-radius:11px;color:var(--ink,#1d1d1f);background:var(--surface,#fff);font:400 16px/1.5 -apple-system,BlinkMacSystemFont,\"SF Pro Text\",sans-serif;resize:vertical;transition:border-color 140ms ease-out,box-shadow 140ms ease-out}.ds-field:hover{border-color:var(--muted,#6e6e73)}.ds-field:focus{border-color:var(--blue,#0066cc);outline:0;box-shadow:0 0 0 3px rgba(0,102,204,.16)}"
+    },
+    {
+      "name": "Active Stage Navigation",
+      "kind": "nav",
+      "refersTo": "navigation-active",
+      "description": "The indexed stage row that keeps the current preparation step visible.",
+      "html": "<a class=\"ds-stage\" href=\"#\" aria-current=\"page\"><svg aria-hidden=\"true\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z\"/></svg><span>Explain what happened</span><b>1</b></a>",
+      "css": ".ds-stage{min-height:44px;display:grid;grid-template-columns:28px minmax(0,1fr) 21px;align-items:center;gap:9px;padding:6px 10px;border-radius:10px;color:var(--blue,#0066cc);background:rgba(0,102,204,.1);font:620 14px/1.25 -apple-system,BlinkMacSystemFont,\"SF Pro Text\",sans-serif;text-decoration:none;transition:background 140ms ease-out,transform 100ms ease-out}.ds-stage svg{justify-self:center}.ds-stage b{width:21px;height:21px;display:grid;place-items:center;border-radius:999px;color:#fff;background:var(--blue,#0066cc);font-size:11px}.ds-stage:hover{background:rgba(0,102,204,.15)}.ds-stage:focus-visible{outline:3px solid rgba(0,102,204,.55);outline-offset:3px}.ds-stage:active{transform:scale(.97)}"
+    },
+    {
+      "name": "Choice Row",
+      "kind": "custom",
+      "refersTo": "choice",
+      "description": "A flat, source-aware decision surface with a visible trade-off.",
+      "html": "<button class=\"ds-choice\"><span class=\"ds-choice-dot\"></span><span><strong>Gather more information</strong><small>Fill gaps and resolve conflicting dates before deciding.</small><em>More certainty, but preparation takes longer.</em></span></button>",
+      "css": ".ds-choice{width:100%;display:grid;grid-template-columns:22px minmax(0,1fr);align-items:start;gap:14px;padding:18px;border:1px solid var(--blue,#0066cc);border-radius:14px;color:var(--ink,#1d1d1f);background:var(--surface,#fff);font:400 16px/1.5 -apple-system,BlinkMacSystemFont,\"SF Pro Text\",sans-serif;text-align:left;box-shadow:0 0 0 1px var(--blue,#0066cc);cursor:pointer;transition:background 140ms ease-out,transform 100ms ease-out}.ds-choice-dot{width:18px;height:18px;margin-top:2px;border:5px solid var(--blue,#0066cc);border-radius:50%}.ds-choice strong,.ds-choice small,.ds-choice em{display:block}.ds-choice small{margin-top:5px;color:var(--muted,#6e6e73);font-size:13px}.ds-choice em{margin-top:8px;font-size:13px;font-style:normal}.ds-choice:hover{background:#fbfbfd}.ds-choice:focus-visible{outline:3px solid rgba(0,102,204,.55);outline-offset:3px}.ds-choice:active{transform:scale(.97)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Quiet Case Desk",
+    "overview": "Casepath should feel like opening a carefully indexed working file in a calm Apple-native utility: cool neutral surroundings, a clear current stage, and one flat surface on which to make the next decision. The interface is restrained but not sparse for its own sake. It lowers pressure through plain hierarchy, generous reading room, familiar controls, and persistent source and review state.\n\nThe visual system separates navigation chrome from case work. The sidebar, top bar, drawers, and toast may use translucent material because they orient or temporarily overlay the record. The case record itself stays opaque, flat, and highly legible, organised by rules, rows, sections, and source-aware status labels rather than by a generic grid of elevated cards.",
+    "keyCharacteristics": [
+      "Native system typography with compact, sentence-case labels and tightly balanced headings.",
+      "Cool greys and white work surfaces, with system blue reserved for the current path and decisive actions.",
+      "A persistent indexed-stage structure on wide screens and a focused drawer on narrow screens.",
+      "Flat records divided by hairlines; semantic tints explain review state without replacing text.",
+      "One dominant decision at each junction, with provenance, uncertainty, and reversibility left visible."
+    ],
+    "rules": [
+      { "name": "The One Voice Rule", "body": "System blue identifies navigation, interaction, and the current decision; semantic colours report state and always travel with a text label or icon.", "section": "colors" },
+      { "name": "The Quiet Canvas Rule", "body": "Keep large areas neutral. Tinted semantic backgrounds belong to bounded callouts and badges, not page sections or decorative bands.", "section": "colors" },
+      { "name": "The Native First Rule", "body": "Do not introduce an expressive display face, serif legal styling, or monospace decoration; the system stack is part of the trust model.", "section": "typography" },
+      { "name": "The Plain Hierarchy Rule", "body": "Use size and weight to clarify task order, not to dramatise the dispute. Avoid all caps, oversized numerals, and promotional headline cadence.", "section": "typography" },
+      { "name": "The Indexed Desk Rule", "body": "The stage index provides the map; the work surface presents the current job. Do not turn the main area into another navigation dashboard.", "section": "layout" },
+      { "name": "The One Decision Rule", "body": "At decision points, one filled action carries the path forward. Secondary, corrective, and deferral actions remain outlined or quiet.", "section": "layout" },
+      { "name": "The Structural Glass Rule", "body": "Blur and translucency belong only to persistent or transient chrome—the sidebar, top bar, and toast—and must fall back to opaque surfaces when reduced transparency is requested.", "section": "elevation" },
+      { "name": "The Flat Work Rule", "body": "Never use shadows to make every section, metric, or piece of evidence look like an independent card. Relationships are expressed with alignment, hairlines, and tonal restraint.", "section": "elevation" },
+      { "name": "The Bounded Softness Rule", "body": "Use medium radii to make stressful work approachable, but keep the underlying information architecture rectilinear and aligned. Avoid bubbly nested panels.", "section": "shapes" }
+    ],
+    "dos": [
+      "Do preserve the indexed-stage shell and keep the current stage unmistakable on desktop and mobile.",
+      "Do structure case material as continuous sections, rows, timelines, and source-linked fields separated by hairlines.",
+      "Do reserve filled system blue for the one action that advances the current decision.",
+      "Do keep uncertainty, provenance, version state, and conflicting evidence visible in plain text alongside semantic colour.",
+      "Do maintain 42px minimum controls, visible keyboard focus, reduced-motion and reduced-transparency behavior, and layouts that remain usable at 320px."
+    ],
+    "donts": [
+      "Don't introduce a generic SaaS card grid, dashboard tile mosaic, gradient, glass panel inside the work surface, or decorative AI motif.",
+      "Don't use legal theatre: no gavels, seals, courthouse imagery, serif briefs, ceremonial borders, or language that implies court authority.",
+      "Don't apply status colours as decoration or as the only carrier of meaning.",
+      "Don't add competing primary actions, motivational filler, or autonomous-looking recommendations at a decision junction.",
+      "Don't smooth away missing, disputed, stale, unreadable, or source-less information to make the interface appear complete."
+    ]
+  }
+}

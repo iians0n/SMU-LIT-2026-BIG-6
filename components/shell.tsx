@@ -1,15 +1,176 @@
 'use client';
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpen, CircleHelp, ClipboardCheck, FileArchive, FileSearch, FolderOpen, Home, Menu, MessagesSquare, Route, Scale, UserRound, X } from 'lucide-react';
-import { useState } from 'react';
+import {
+  BookOpen,
+  Check,
+  CircleHelp,
+  ClipboardCheck,
+  FileArchive,
+  FileSearch,
+  FolderOpen,
+  Home,
+  Menu,
+  MessagesSquare,
+  Route,
+  Scale,
+  ShieldCheck,
+  UserRound,
+  X,
+} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
-// The six stages are a sequence, not a menu. Numbering them is the cheapest
-// way to say so - without it the sidebar reads as nine equal destinations and
-// a first-time user has no idea where to start.
-const primary=[['/','Step by step',Home,''],['/intake','Explain',MessagesSquare,'1'],['/documents','Documents',FolderOpen,'2'],['/chronology','Confirm facts',UserRound,'3'],['/evidence','Review support',FileSearch,'4'],['/options','Choose next step',Route,'5'],['/prepare','Prepare & hand off',FileArchive,'6']] as const;
-const secondary=[['/dashboard','Everything at once',Home],['/sources','Official sources',BookOpen],['/verification','Verification record',ClipboardCheck]] as const;
+const primary = [
+  ['/', 'Overview', Home, ''],
+  ['/intake', 'Explain what happened', MessagesSquare, '1'],
+  ['/documents', 'Add documents', FolderOpen, '2'],
+  ['/chronology', 'Confirm the facts', UserRound, '3'],
+  ['/evidence', 'Review support', FileSearch, '4'],
+  ['/options', 'Choose a next step', Route, '5'],
+  ['/prepare', 'Prepare your pack', FileArchive, '6'],
+] as const;
 
-function Navigation({close}:{close?:()=>void}){const path=usePathname();return <><div className="side-heading">Prepare your claim</div><nav className="side-nav" aria-label="Case stages">{primary.map(([href,label,Icon,step])=><Link key={href} href={href} onClick={close} className="side-link" aria-current={path===href?'page':undefined}><Icon size={20}/><span>{label}</span>{step&&<span className="side-step" aria-hidden="true">{step}</span>}</Link>)}</nav><div className="side-spacer"/><div className="side-rule"/><div className="side-heading">Reference</div><nav className="side-nav" aria-label="References">{secondary.map(([href,label,Icon])=><Link key={href} href={href} onClick={close} className="side-link" aria-current={path===href?'page':undefined}><Icon size={20}/><span>{label}</span></Link>)}</nav></>}
+const secondary = [
+  ['/dashboard', 'Case overview', Home],
+  ['/sources', 'Official sources', BookOpen],
+  ['/verification', 'Verification record', ClipboardCheck],
+] as const;
 
-export function Shell({children}:{children:React.ReactNode}){const [mobile,setMobile]=useState(false);return <div className="app-shell"><aside className="sidebar"><Link href="/" className="brand">Casepath</Link><Navigation/></aside>{mobile&&<><button className="drawer-scrim" aria-label="Close menu" onClick={()=>setMobile(false)}/><aside className="drawer" style={{left:0,right:'auto'}}><div className="drawer-head"><span className="brand" style={{margin:0}}>Casepath</span><button className="button button-quiet" onClick={()=>setMobile(false)} aria-label="Close menu"><X size={20}/></button></div><div style={{height:24}}/><Navigation close={()=>setMobile(false)}/></aside></>}<main className="main-frame"><header className="topbar"><div className="row-start"><button className="button button-quiet mobile-menu" onClick={()=>setMobile(true)} aria-label="Open menu"><Menu size={21}/></button><div className="topbar-title">Small claims preparation</div></div><div className="topbar-actions"><Link className="button button-quiet" href="/sources"><CircleHelp size={19}/><span>Help</span></Link><span aria-hidden="true" style={{height:30,width:1,background:'var(--line)'}}/><span className="button button-quiet"><Scale size={19}/><span>Demo case</span></span></div></header><div className="content">{children}</div></main></div>}
+function Navigation({ close }: { close?: () => void }) {
+  const path = usePathname();
+  const activeIndex = primary.findIndex(([href]) => href === path);
+
+  return (
+    <>
+      <div className="side-heading">Your preparation</div>
+      <nav className="side-nav" aria-label="Preparation stages">
+        {primary.map(([href, label, Icon, step], index) => {
+          const complete = activeIndex > index && index > 0;
+          return (
+            <Link
+              key={href}
+              href={href}
+              onClick={close}
+              className="side-link"
+              aria-current={path === href ? 'page' : undefined}
+              data-complete={complete || undefined}
+            >
+              <span className="side-icon" aria-hidden="true">
+                {complete ? <Check size={15} strokeWidth={2.5} /> : <Icon size={18} />}
+              </span>
+              <span>{label}</span>
+              {step && <span className="side-step" aria-hidden="true">{step}</span>}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="side-spacer" />
+      <div className="side-heading">Reference</div>
+      <nav className="side-nav" aria-label="Case references">
+        {secondary.map(([href, label, Icon]) => (
+          <Link
+            key={href}
+            href={href}
+            onClick={close}
+            className="side-link side-link-secondary"
+            aria-current={path === href ? 'page' : undefined}
+          >
+            <span className="side-icon" aria-hidden="true"><Icon size={18} /></span>
+            <span>{label}</span>
+          </Link>
+        ))}
+      </nav>
+
+      <div className="privacy-note">
+        <ShieldCheck size={17} aria-hidden="true" />
+        <span>Demo workspace<br /><small>Nothing is filed from here</small></span>
+      </div>
+    </>
+  );
+}
+
+export function Shell({ children }: { children: React.ReactNode }) {
+  const path = usePathname();
+  const [mobile, setMobile] = useState(false);
+  const menuClose = useRef<HTMLButtonElement>(null);
+  const current = [...primary, ...secondary].find(([href]) => href === path);
+
+  useEffect(() => {
+    if (!mobile) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobile(false);
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    document.body.style.overflow = 'hidden';
+    const focusFrame = window.requestAnimationFrame(() => menuClose.current?.focus());
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.removeEventListener('keydown', closeOnEscape);
+      document.body.style.overflow = '';
+    };
+  }, [mobile]);
+
+  return (
+    <div className="app-shell">
+      <a className="skip-link" href="#main-content">Skip to content</a>
+
+      <aside className="sidebar">
+        <Link href="/" className="brand" aria-label="Casepath home">
+          <span className="brand-mark" aria-hidden="true"><Scale size={18} /></span>
+          <span>Casepath</span>
+        </Link>
+        <Navigation />
+      </aside>
+
+      {mobile && (
+        <>
+          <button className="drawer-scrim" tabIndex={-1} aria-hidden="true" onClick={() => setMobile(false)} />
+          <aside className="drawer" id="mobile-navigation" role="dialog" aria-modal="true" aria-label="Navigation menu">
+            <div className="drawer-head">
+              <span className="brand drawer-brand">
+                <span className="brand-mark" aria-hidden="true"><Scale size={18} /></span>
+                <span>Casepath</span>
+              </span>
+              <button ref={menuClose} className="button button-quiet icon-button" onClick={() => setMobile(false)} aria-label="Close menu">
+                <X size={20} aria-hidden="true" />
+              </button>
+            </div>
+            <Navigation close={() => setMobile(false)} />
+          </aside>
+        </>
+      )}
+
+      <main className="main-frame" id="main-content" inert={mobile ? true : undefined}>
+        <header className="topbar">
+          <div className="row-start topbar-start">
+            <button
+              className="button button-quiet icon-button mobile-menu"
+              onClick={() => setMobile(true)}
+              aria-label="Open menu"
+              aria-expanded={mobile}
+              aria-controls="mobile-navigation"
+            >
+              <Menu size={21} aria-hidden="true" />
+            </button>
+            <div>
+              <div className="topbar-product">Small claims preparation</div>
+              <div className="topbar-title">{current?.[1] ?? 'Casepath'}</div>
+            </div>
+          </div>
+          <div className="topbar-actions">
+            <Link className="button button-quiet" href="/sources">
+              <CircleHelp size={18} aria-hidden="true" /><span>Help</span>
+            </Link>
+            <div className="status-chip" aria-label="Using a demonstration case">
+              <span className="status-dot" aria-hidden="true" />
+              <span>Demo case</span>
+            </div>
+          </div>
+        </header>
+        <div className="content">{children}</div>
+      </main>
+    </div>
+  );
+}

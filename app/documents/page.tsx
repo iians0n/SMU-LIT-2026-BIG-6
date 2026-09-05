@@ -84,6 +84,13 @@ function DocumentsPage() {
     }
   }
 
+  function confirmRemove(doc: Document) {
+    const name = doc.userLabel ?? doc.fileName;
+    if (window.confirm(`Remove “${name}”? Anything that relied on this file will need to be reviewed again.`)) {
+      void remove(doc);
+    }
+  }
+
   const flagged = documents.filter((d) => d.processingStatus === 'failed' || d.issues.length > 0);
 
   return (
@@ -113,6 +120,7 @@ function DocumentsPage() {
             <input
               ref={input}
               type="file"
+              name="documents"
               multiple
               hidden
               accept={SUPPORTED_EXTENSIONS.map((e) => `.${e}`).join(',')}
@@ -180,7 +188,7 @@ function DocumentsPage() {
                           <RefreshCw size={15} /> Replace
                         </Button>
                       )}
-                      <Button kind="quiet" disabled={busy} onClick={() => void remove(doc)}>
+                      <Button kind="quiet" disabled={busy} onClick={() => confirmRemove(doc)}>
                         <Trash2 size={15} /> Remove
                       </Button>
                     </div>
