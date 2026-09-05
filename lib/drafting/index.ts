@@ -1,7 +1,10 @@
 import type { Case, Contradiction, Draft, DraftField, SourceRef } from '@/lib/dashboard/contracts';
 export function sourceValue(c:Case,ref:SourceRef|null):string|null {
  if(!ref)return null;
- if(ref.kind==='fact'){const f=c.facts.find(f=>f.id===ref.id);return f&&f.confirmedByUser&&!f.unknown&&f.value!==null?String(f.value):null;}
+ // A fact's readable content is its statement. `value` holds the structured
+ // form (minor units, an ISO date), so returning it here put "200000" into the
+ // narrative and made every fact-sourced edit fail the containment check below.
+ if(ref.kind==='fact'){const f=c.facts.find(f=>f.id===ref.id);return f&&f.confirmedByUser&&!f.unknown&&f.value!==null?f.label:null;}
  for(const d of c.documents){if(d.processingStatus!=='ready')continue;const e=d.excerpts.find(e=>e.id===ref.id);if(e)return e.text;}
  return null;
 }
@@ -18,11 +21,17 @@ export function assembleDraft(c:Case,contradictions:Contradiction[]|null):Draft 
  const fields:DraftField[]=[];
  const add=(id:string,section:DraftField['section'],label:string,value:string,ref:SourceRef|null,required=false,extra:SourceRef[]=[])=>fields.push({id,section,label,value,sourceRef:ref,additionalSourceRefs:extra,required,sourceCaseVersion:c.version,reviewedAt:null,aiDrafted:false});
  const fact=(key:string)=>c.facts.find(f=>f.key===key&&f.confirmedByUser&&!f.unknown&&f.value!==null);
- for(const [key,label] of [['agreement','Agreed work'],['alleged_failure','Your account']] as const){const f=fact(key);add(key,'summary',label,f?String(f.value):'',f?{kind:'fact',id:f.id}:null,true);}
+ for(const [key,label] of [['agreement','Agreed work'],['alleged_failure','Your account']] as const){const f=fact(key);add(key,'summary',label,f?f.label:'',f?{kind:'fact',id:f.id}:null,true);}
  const active=contradictions?.filter(x=>!x.resolved)??[];
  for(const x of active){const refs=x.sourceRefs.filter(r=>sourceValue(c,r)!==null);add(`uncertainty-${x.id}`,'summary','Unresolved point',x.description,refs[0]??null,true,refs.slice(1));}
  for(const event of [...c.events].sort((a,b)=>(a.date??'9999').localeCompare(b.date??'9999'))){add(event.id,'chronology',event.date??'Date unknown',event.label,event.sourceRefs[0]??null,false,event.sourceRefs.slice(1));}
- for(const doc of c.documents){const e=doc.excerpts[0];add(doc.id,'evidence',doc.name,`${doc.name} · ${doc.processingStatus.replaceAll('_',' ')} · ${doc.excerpts.length} excerpt(s)`,e?{kind:'excerpt',id:e.id}:null);}
+ // An evidence row describes the record rather than asserting anything about the
+ // dispute. When the document has no citable excerpt - none extracted, or the
+ // file is unreadable so its excerpts are not quotable - the description belongs
+ // in the label. Leaving it in `value` created a populated field with no
+ // provenance, which made readyForTransfer unreachable for any case containing a
+ // password-protected, unsupported, duplicate or unreadable file.
+ for(const doc of c.documents){const e=doc.excerpts[0];const ref=e?{kind:'excerpt' as const,id:e.id}:null;const desc=`${doc.name} · ${doc.processingStatus.replaceAll('_',' ')} · ${doc.excerpts.length} excerpt(s)`;const citable=ref&&sourceValue(c,ref)!==null;add(doc.id,'evidence',citable?doc.name:desc,citable?desc:'',citable?ref:null);}
  const calc=amountCalculation(c);
  for(const f of calc.entries)add(`amount-${f.id}`,'amount',f.label,`${f.key==='refund_cents'?'− ':''}${money(Number(f.value))}`,{kind:'fact',id:f.id});
  add('total','amount','Calculated requested amount',calc.total===null?'':money(calc.total),calc.total!==null?{kind:'fact',id:calc.entries[0].id}:null,true,calc.entries.slice(1).map(f=>({kind:'fact',id:f.id})));
