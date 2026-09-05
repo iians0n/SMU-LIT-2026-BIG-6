@@ -64,6 +64,8 @@ export interface Party {
   address: string | null;
   /** Phone or email, so the tribunal can reach them. */
   contact: string | null;
+  /** NRIC, FIN, UEN or passport number. CJTS requires one for each party. */
+  idNumber: string | null;
   inSingapore: boolean | null;
   notes: string | null;
 }

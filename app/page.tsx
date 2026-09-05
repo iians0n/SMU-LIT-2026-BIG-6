@@ -6,7 +6,7 @@ import { CircleAlert, Mic, Paperclip, Send, Square } from 'lucide-react';
 import { useCase } from '@/components/case-provider';
 import { ViewState } from '@/components/view-state';
 import { NOT_A_LAWYER } from '@/lib/plain-language';
-import type { DerivedForm } from '@/lib/cjts/form';
+import { FORM_SOURCE, type DerivedForm } from '@/lib/cjts/form';
 
 interface Turn {
   role: 'user' | 'assistant';
@@ -331,7 +331,8 @@ function Chat() {
           <span className="form-count">{form ? `${form.filled} of ${form.total}` : ''}</span>
         </div>
         <p className="small muted" style={{ margin: '4px 0 10px' }}>
-          Fills in as we talk. Nothing goes in without something to point at.
+          The real CJTS sections, filling in as we talk. Nothing goes in without
+          something to point at.
         </p>
         {form && (
           <div
@@ -382,6 +383,17 @@ function Chat() {
         )}
 
         <div className="side-rule" style={{ margin: '18px 0' }} />
+        {/* Where the labels come from, so anyone can check the mapping rather
+            than trust it. There is no downloadable claim form - CJTS is an
+            online portal - so this is a worksheet, never a copy of one. */}
+        <p className="small muted">
+          Section names and fields are taken from the{' '}
+          <a href={FORM_SOURCE.url} target="_blank" rel="noreferrer">
+            {FORM_SOURCE.title}
+          </a>{' '}
+          ({FORM_SOURCE.pages}, retrieved {FORM_SOURCE.retrieved}). You still fill the claim in
+          on CJTS itself — there is no form to download.
+        </p>
         <p className="small muted">
           Check and change everything on <Link href="/chronology">the review page</Link>, then see
           what your files back up on <Link href="/evidence">the evidence page</Link>.

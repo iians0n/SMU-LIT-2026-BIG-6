@@ -17,10 +17,33 @@
  *   The pre-filing assessment ID is never populated by anything. CJTS issues
  *   it, and inventing one would be fabricating an official reference.
  *
- * Field names follow the publicly documented CJTS information requirements
- * (PRD S3). They must be checked against the live portal before anyone claims
- * this maps one-to-one onto the real form.
+ * SECTIONS AND FIELD LABELS ARE THE REAL ONES.
+ *
+ * Taken from the official "Filing a Small Claims in CJTS" guide, pages 24-27,
+ * retrieved 5 September 2026:
+ * https://www.judiciary.gov.sg/docs/default-source/civil-docs/cjts_guide_to_filing_sct.pdf
+ *
+ * The claim form has six sections — A Particulars of Claimant(s), B Particulars
+ * of Respondent(s), C Particulars of Claim, D Brief Summary of Claim,
+ * E Supporting Documents, F Claiming For — and this mirrors them so a user can
+ * carry their answers across without re-deriving what was being asked.
+ *
+ * There is NO downloadable claim form. CJTS is an online portal and the form
+ * exists only inside it, so this is a preparation worksheet, never a copy of an
+ * official form. The one genuinely downloadable document in the process is the
+ * Memorandum of Consent, and only for claims above $20,000.
  */
+
+/** Where these labels come from, shown in the UI so the mapping is checkable. */
+export const FORM_SOURCE = {
+  title: "Filing a Small Claims in CJTS — official guide",
+  url: "https://www.judiciary.gov.sg/docs/default-source/civil-docs/cjts_guide_to_filing_sct.pdf",
+  pages: "pages 24–27",
+  retrieved: "2026-09-05",
+} as const;
+
+/** CJTS limits the summary to 500 characters, so we flag it before they get there. */
+export const SUMMARY_MAX = 500;
 
 import type { CaseRecord } from "@/lib/contracts";
 import { formatMoney } from "@/lib/contracts";
@@ -114,21 +137,32 @@ function settled(f: { origin: string; confirmedByUser: boolean; disputed: boolea
 const SPECS: Spec[] = [
   {
     key: "claimant_name",
-    label: "Your full name",
-    group: "About you",
+    label: "Name",
+    group: "A. Particulars of Claimant(s)",
     required: true,
-    help: "Exactly as it appears on your NRIC or FIN.",
+    help: "As it appears on your NRIC, FIN or passport.",
     derive: (r) => {
       const p = claimant(r);
       return p?.name ? { value: p.name, source: "you told us", confirmed: true } : null;
     },
   },
   {
-    key: "claimant_contact",
-    label: "Your phone or email",
-    group: "About you",
+    key: "claimant_id",
+    label: "ID",
+    group: "A. Particulars of Claimant(s)",
     required: true,
-    help: "So the tribunal can reach you about your case.",
+    help: "NRIC, FIN or passport number. CJTS marks this mandatory.",
+    derive: (r) => {
+      const p = claimant(r);
+      return p?.idNumber ? { value: p.idNumber, source: "you told us", confirmed: true } : null;
+    },
+  },
+  {
+    key: "claimant_contact",
+    label: "Contact No 1 / Email",
+    group: "A. Particulars of Claimant(s)",
+    required: true,
+    help: "CJTS may use Contact No 1 to reach you, so a working number and a valid email both matter.",
     derive: (r) => {
       const p = claimant(r);
       return p?.contact ? { value: p.contact, source: "you told us", confirmed: true } : null;
@@ -136,10 +170,10 @@ const SPECS: Spec[] = [
   },
   {
     key: "claimant_address",
-    label: "Your address",
-    group: "About you",
+    label: "Address",
+    group: "A. Particulars of Claimant(s)",
     required: true,
-    help: "Where documents about your case should be sent.",
+    help: "CJTS asks for postal code, block, street, floor-unit and building separately.",
     derive: (r) => {
       const p = claimant(r);
       return p?.address ? { value: p.address, source: "you told us", confirmed: true } : null;
@@ -147,8 +181,8 @@ const SPECS: Spec[] = [
   },
   {
     key: "respondent_name",
-    label: "Who you are claiming against",
-    group: "The other side",
+    label: "Name",
+    group: "B. Particulars of Respondent(s)",
     required: true,
     help: "A person's full name, or a business's registered name.",
     derive: (r) => {
@@ -158,15 +192,18 @@ const SPECS: Spec[] = [
   },
   {
     key: "respondent_type",
-    label: "Are they a person or a business?",
-    group: "The other side",
+    label: "ID type",
+    group: "B. Particulars of Respondent(s)",
     required: true,
-    help: "A business has to be named exactly as it is registered.",
+    help: "NRIC, FIN, UEN or passport number. A business is identified by its UEN.",
     derive: (r) => {
       const p = respondent(r);
       if (!p || p.kind === "unknown") return null;
+      // A business is identified by UEN, a person by NRIC/FIN. Naming the type
+      // is useful even before the number is known, so both are shown.
+      const type = p.kind === "business" ? "UEN (a business)" : "NRIC / FIN (a person)";
       return {
-        value: p.kind === "business" ? "A business" : "A person",
+        value: p.idNumber ? `${type} — ${p.idNumber}` : type,
         source: "you told us",
         confirmed: true,
       };
@@ -174,10 +211,10 @@ const SPECS: Spec[] = [
   },
   {
     key: "respondent_address",
-    label: "Their address",
-    group: "The other side",
+    label: "Respondent (Registered) Address",
+    group: "B. Particulars of Respondent(s)",
     required: true,
-    help: "Needed so the claim can be delivered to them.",
+    help: "Their registered address. The claim has to be served there.",
     derive: (r) => {
       const p = respondent(r);
       return p?.address ? { value: p.address, source: "you told us", confirmed: true } : null;
@@ -185,10 +222,10 @@ const SPECS: Spec[] = [
   },
   {
     key: "claim_type",
-    label: "What the dispute is about",
-    group: "Your claim",
+    label: "Nature of Dispute",
+    group: "C. Particulars of Claim",
     required: true,
-    help: "For example, a service that was not completed.",
+    help: "CJTS fills this from your pre-filing assessment. Only one main category per claim.",
     derive: (r) => {
       if (r.case.claimCategory === "unknown") return null;
       const words: Record<string, string> = {
@@ -201,11 +238,23 @@ const SPECS: Spec[] = [
     },
   },
   {
-    key: "claim_amount",
-    label: "How much you are claiming",
-    group: "Your claim",
+    key: "goods_or_service",
+    label: "Name / Type of Goods Sold or Service Provided",
+    group: "C. Particulars of Claim",
     required: true,
-    help: "Added up from what you paid and what it cost you, less anything refunded.",
+    help: "CJTS marks this mandatory for a goods or services dispute — what was bought or what work was agreed.",
+    derive: (r) => {
+      const f = factOf(r, "agreement");
+      if (!f) return null;
+      return { value: f.statement, source: "what you told us was agreed", confirmed: settled(f) };
+    },
+  },
+  {
+    key: "claim_amount",
+    label: "Claiming For — Money Order value",
+    group: "C. Particulars of Claim",
+    required: true,
+    help: "The Money Order value. Added up from what you paid and what it cost you, less anything refunded.",
     derive: (r) => {
       // Built from components so the figure can be traced, and left empty when
       // they do not reconcile rather than guessed at.
@@ -227,8 +276,8 @@ const SPECS: Spec[] = [
   },
   {
     key: "claim_date",
-    label: "When the problem arose",
-    group: "Your claim",
+    label: "Date the dispute arose",
+    group: "C. Particulars of Claim",
     required: true,
     help: "A claim normally has to be brought within two years of this date.",
     derive: (r) => {
@@ -245,8 +294,8 @@ const SPECS: Spec[] = [
   },
   {
     key: "claim_summary",
-    label: "What happened",
-    group: "Your claim",
+    label: "D. Brief Summary of Claim",
+    group: "C. Particulars of Claim",
     required: true,
     help: "A short account of the dispute, in your own words.",
     derive: (r) => {
@@ -254,8 +303,12 @@ const SPECS: Spec[] = [
         (f): f is NonNullable<typeof f> => Boolean(f),
       );
       if (parts.length === 0) return null;
+      const text = parts.map((f) => f.statement).join(" ");
       return {
-        value: parts.map((f) => f.statement).join(" "),
+        value:
+          text.length > SUMMARY_MAX
+            ? `${text.slice(0, SUMMARY_MAX - 1)}… (${text.length} characters — CJTS allows ${SUMMARY_MAX}, so this needs shortening)`
+            : text,
         source: `${parts.length} thing(s) you told us`,
         confirmed: parts.every(settled),
       };
@@ -263,10 +316,10 @@ const SPECS: Spec[] = [
   },
   {
     key: "supporting_documents",
-    label: "Documents you will attach",
-    group: "Your claim",
+    label: "E. Supporting Documents",
+    group: "C. Particulars of Claim",
     required: false,
-    help: "Anything that backs up your account.",
+    help: "PDF only, up to 5 MB each. CJTS asks for a document type and description for each one.",
     derive: (r) => {
       const usable = r.documents.filter(
         (d) => d.processingStatus === "extracted" && !d.issues.includes("duplicate"),
@@ -281,10 +334,10 @@ const SPECS: Spec[] = [
   },
   {
     key: "acra_profile",
-    label: "The other side's ACRA profile",
-    group: "Also needed",
+    label: "ACRA business profile",
+    group: "Also needed at filing",
     required: false,
-    help: "Only if you are claiming against a business. It has to be recent.",
+    help: "Only if the respondent is a business. It must be obtained within one month of filing.",
     derive: (r) => {
       const p = respondent(r);
       if (p?.kind !== "business") return null;
@@ -293,10 +346,10 @@ const SPECS: Spec[] = [
   },
   {
     key: "assessment_id",
-    label: "Pre-filing assessment number",
-    group: "Also needed",
+    label: "Pre-filing assessment ID",
+    group: "Also needed at filing",
     required: true,
-    help: "CJTS gives you this after you complete their pre-filing assessment. We cannot fill it in.",
+    help: "CJTS issues this when you finish their pre-filing assessment, and it starts the claim form. We cannot fill it in.",
     // Deliberately has no derive. FR08: never fabricate an official reference.
     derive: () => null,
   },
