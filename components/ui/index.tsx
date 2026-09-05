@@ -5,7 +5,7 @@ export function Badge({label,tone='neutral'}:{label:string;tone?:'neutral'|'good
 }
 
 export function PageHeader({eyebrow,title,description,action}:{eyebrow?:string;title:string;description:string;action?:ReactNode}) {
-  return <header className="row" style={{alignItems:'flex-end'}}><div>{eyebrow&&<div className="eyebrow">{eyebrow}</div>}<h1>{title}</h1><p className="lede">{description}</p></div>{action}</header>;
+  return <header className="page-header"><div><h1>{title}</h1><p className="lede">{description}</p>{eyebrow&&<p className="page-context">{eyebrow}</p>}</div>{action&&<div className="page-action">{action}</div>}</header>;
 }
 
 export function Button({children,kind='secondary',...props}:React.ButtonHTMLAttributes<HTMLButtonElement>&{kind?:'primary'|'secondary'|'quiet'}) {

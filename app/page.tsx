@@ -1,4 +1,5 @@
 'use client';
+
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CircleAlert, Mic, Paperclip, Send, Square } from 'lucide-react';
@@ -7,16 +8,11 @@ import { ViewState } from '@/components/view-state';
 import { NOT_A_LAWYER } from '@/lib/plain-language';
 import type { DerivedForm } from '@/lib/cjts/form';
 
-/**
- * The conversation. This is the product.
- *
- * The user talks; the assistant asks one thing at a time and writes down what
- * it is told. The panel beside it fills in as they go, so they can see the case
- * being built rather than being told it was. Everything in that panel is
- * reviewable and correctable elsewhere — nothing here is final.
- */
-
-interface Turn { role: 'user' | 'assistant'; content: string; actions?: string[] }
+interface Turn {
+  role: 'user' | 'assistant';
+  content: string;
+  actions?: string[];
+}
 
 const OPENER =
   "Hello. I'm here to help you get organised about your dispute.\n\nTell me what happened, in your own words. Don't worry about getting it in order or using the right terms — just start wherever makes sense to you.";
@@ -32,22 +28,24 @@ const OPENER =
  */
 type MicState = "idle" | "asking" | "recording" | "transcribing";
 
-
 function SetupNeeded() {
   return (
     <div className="guide-card">
-      <p className="guide-eyebrow">Not connected yet</p>
+      <div className="guide-stage" aria-label="Assistant unavailable, setup required">
+        <span>Assistant unavailable</span>
+        <span>Setup required</span>
+      </div>
       <h1 className="guide-h1">The assistant needs a key before it can talk.</h1>
       <p className="guide-lead">
         Everything else works without one — reading your documents, checking for conflicts, the
-        route rules, the draft. Only the conversation needs a model.
+        route rules, and the draft. Only the conversation needs a model.
       </p>
       <div className="guide-note">
         <CircleAlert size={22} aria-hidden="true" />
         <div>
           <p style={{ margin: 0 }}>Create <code>.env.local</code> in the project folder:</p>
           <pre style={{ margin: '10px 0 0', fontSize: '0.95rem', whiteSpace: 'pre-wrap' }}>
-{`OPENAI_API_KEY=sk-...
+{`OPENAI_API_KEY=sk-…
 OPENAI_BASE_URL=https://api.openai.com/v1`}
           </pre>
           <p style={{ margin: '10px 0 0' }}>Then restart the server.</p>
@@ -81,14 +79,19 @@ function Chat() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const res = await fetch('/api/chat');
-      if (!cancelled && res.ok) setAvailable((await res.json()).available);
+      const response = await fetch('/api/chat');
+      if (!cancelled && response.ok) setAvailable((await response.json()).available);
       else if (!cancelled) setAvailable(false);
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [turns, busy]);
+  useEffect(() => {
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    endRef.current?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth' });
+  }, [turns, busy]);
 
   const refreshForm = useCallback(async () => {
     const res = await fetch('/api/form', { cache: 'no-store' });
@@ -131,18 +134,18 @@ function Chat() {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch('/api/chat', {
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: next.map(({ role, content }) => ({ role, content })) }),
       });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error ?? 'The assistant could not reply.');
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? 'The assistant could not reply.');
       setTurns([...next, { role: 'assistant', content: body.reply, actions: body.actions }]);
       if (body.mutated) await Promise.all([reload(), refreshForm()]);
-    } catch (e) {
+    } catch (caught) {
       // Their words stay on screen. A failed reply must not lose what they typed.
-      setError(e instanceof Error ? e.message : 'The assistant could not reply.');
+      setError(caught instanceof Error ? caught.message : 'The assistant could not reply.');
     } finally {
       setBusy(false);
     }
@@ -206,17 +209,19 @@ function Chat() {
 
   async function upload(files: FileList) {
     setBusy(true);
+    setError(null);
     try {
       const form = new FormData();
-      for (const f of Array.from(files)) form.append('files', f);
-      const res = await fetch('/api/documents', { method: 'POST', body: form });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error);
-      const names = body.results.map((r: { fileName: string }) => r.fileName).join(', ');
+      for (const file of Array.from(files)) form.append('files', file);
+      const response = await fetch('/api/documents', { method: 'POST', body: form });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error);
+      const names = body.results.map((result: { fileName: string }) => result.fileName).join(', ');
       await Promise.all([reload(), refreshForm()]);
+      setBusy(false);
       await send(`I've added these files: ${names}. Please have a look at them.`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Those files could not be added.');
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Those files could not be added.');
     } finally {
       setBusy(false);
     }
@@ -229,13 +234,13 @@ function Chat() {
     <div className="chat-layout">
       <div className="chat-main">
         <div className="chat-scroll" role="log" aria-live="polite" aria-label="Conversation">
-          {turns.map((t, i) => (
-            <div key={i} className={`bubble bubble-${t.role}`}>
-              {t.content.split('\n').map((line, j) => (
-                <p key={j} style={{ margin: j ? '10px 0 0' : 0 }}>{line}</p>
+          {turns.map((turn, index) => (
+            <div key={index} className={`bubble bubble-${turn.role}`}>
+              {turn.content.split('\n').map((line, lineIndex) => (
+                <p key={lineIndex} style={{ margin: lineIndex ? '10px 0 0' : 0 }}>{line}</p>
               ))}
-              {t.actions?.map((a) => (
-                <span key={a} className="bubble-action">✎ {a}</span>
+              {turn.actions?.map((action) => (
+                <span key={action} className="bubble-action">{action}</span>
               ))}
             </div>
           ))}
@@ -270,26 +275,38 @@ function Chat() {
 
         <form
           className="chat-input"
-          onSubmit={(e) => { e.preventDefault(); void send(draft); }}
+          onSubmit={(event) => { event.preventDefault(); void send(draft); }}
         >
           <textarea
+            name="message"
+            autoComplete="off"
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(draft); }
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                void send(draft);
+              }
             }}
-            placeholder="Type your answer, or press the microphone to speak"
+            placeholder="Type your answer, or use the microphone…"
             aria-label="Your message"
             rows={2}
             disabled={busy}
           />
           <div className="chat-buttons">
             <input
-              ref={fileInput} type="file" multiple hidden
-              onChange={(e) => { if (e.target.files?.length) void upload(e.target.files); e.target.value = ''; }}
+              ref={fileInput}
+              name="chat-documents"
+              type="file"
+              multiple
+              hidden
+              onChange={(event) => {
+                if (event.target.files?.length) void upload(event.target.files);
+                event.target.value = '';
+              }}
             />
             <button type="button" className="chat-icon" onClick={() => fileInput.current?.click()} disabled={busy} aria-label="Add a document">
-              <Paperclip size={22} />
+              <Paperclip size={22} aria-hidden="true" />
             </button>
             <button
               type="button"
@@ -298,7 +315,7 @@ function Chat() {
               disabled={busy || mic === 'transcribing' || mic === 'asking'}
               aria-label={mic === 'recording' ? 'Stop recording' : 'Speak your answer'}
             >
-              {mic === 'recording' ? <Square size={20} /> : <Mic size={22} />}
+              {mic === 'recording' ? <Square size={20} aria-hidden="true" /> : <Mic size={22} aria-hidden="true" />}
             </button>
             <button type="submit" className="chat-send" disabled={busy || !draft.trim()}>
               <Send size={20} aria-hidden="true" /> Send

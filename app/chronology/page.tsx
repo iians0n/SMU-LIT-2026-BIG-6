@@ -57,6 +57,8 @@ function Entry({ fact, date }: { fact: Fact; date: string | null }) {
           {editing ? (
             <textarea
               className="field"
+              name={`fact-${fact.id}`}
+              autoComplete="off"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               rows={3}
