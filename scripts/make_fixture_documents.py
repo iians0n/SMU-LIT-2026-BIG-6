@@ -16,13 +16,19 @@ import io
 import os
 import random
 import shutil
-import subprocess
+import sys
 
 import fitz  # PyMuPDF
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
+from reportlab import rl_config
+
+# reportlab stamps a creation timestamp by default, which would give every
+# regeneration a new hash and force a pointless fixture re-sync. invariant
+# makes the output byte-reproducible.
+rl_config.invariant = 1
 
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "fixtures", "documents")
 os.makedirs(OUT, exist_ok=True)
@@ -47,7 +53,7 @@ def p(name: str) -> str:
 # --------------------------------------------------------------- clean PDF
 def make_quote() -> None:
     """Two-page PDF with a real text layer. The happy path: extraction, no OCR."""
-    c = canvas.Canvas(p("quote-accepted.pdf"), pagesize=A4)
+    c = canvas.Canvas(p("quote-accepted.pdf"), pagesize=A4, invariant=1)
     w, h = A4
 
     c.setFont("Helvetica-Bold", 16)
@@ -141,8 +147,21 @@ def make_receipt() -> None:
     print("receipt-photo-2.jpg         byte-identical duplicate")
 
 
-def make_chat() -> None:
-    """The chat thread carrying the contradiction the whole demo turns on."""
+def make_chat(full: bool) -> None:
+    """
+    The chat thread carrying the contradiction the whole demo turns on.
+
+    Two versions, because the demo case and the adverse case are the same user
+    uploading different amounts of the same thread:
+
+      full=False -> whatsapp-thread.png       (through 4 Aug)
+      full=True  -> whatsapp-thread-full.png  (adds the settlement offer, the
+                    contractor's partial-performance account, and the S$400
+                    refund the claimant does not mention)
+
+    Keeping them separate means the demo fixture is not modelling a pipeline
+    that failed to notice a refund sitting in a file it had already read.
+    """
     W, H = 820, 1400
     img = Image.new("RGB", (W, H), (229, 221, 213))
     d = ImageDraw.Draw(img)
@@ -163,6 +182,15 @@ def make_chat() -> None:
         ("out", "Any update? Bathroom still not usable.", "3 Aug", "20:15"),
         ("in", "Boss say next week can. Sorry for the delay.", "4 Aug", "08:37"),
     ]
+    if full:
+        # Settlement attempt, the contractor's own account of partial
+        # performance, and a partial refund. All adverse, all in a file the
+        # claimant uploaded themselves.
+        messages += [
+            ("in", "Ms Tan, we can come back and finish the tiling at no\nextra charge. Waterproofing already done and the\nfloor tiles are laid. Or we refund you part, up to you.", "18 Aug", "14:02"),
+            ("out", "Just refund me. I'll get someone else.", "18 Aug", "19:47"),
+            ("in", "Ok. Refunded $400 today. Sorry again.", "20 Aug", "10:12"),
+        ]
 
     y = 130
     for side, text, date, time in messages:
@@ -184,8 +212,10 @@ def make_chat() -> None:
 
     # Crop to content so it reads as a real screenshot rather than a tall canvas.
     img = img.crop((0, 0, W, y + 14))
-    img.save(p("whatsapp-thread.png"), "PNG")
-    print("whatsapp-thread.png         carries the contradiction")
+    name = "whatsapp-thread-full.png" if full else "whatsapp-thread.png"
+    img.save(p(name), "PNG")
+    label = "adds settlement offer + S$400 refund" if full else "carries the contradiction"
+    print(f"{name:<28}{label}")
 
 
 def make_blurry_note() -> None:
@@ -231,17 +261,33 @@ def make_unrelated() -> None:
 
 # -------------------------------------------------------- failure-mode PDFs
 def make_password_protected() -> None:
-    """Password protected. Must fail visibly with a retry path, not silently."""
+    """
+    Password protected. Must fail visibly with a retry path, not silently.
+
+    AES encryption uses a fresh random IV on every save, so this file cannot be
+    byte-reproducible the way the others are. Regenerating it would change its
+    hash for no reason and force a fixture re-sync each time, so it is treated
+    as a committed artifact: skipped when it already exists. Pass --force to
+    rebuild it deliberately, then run scripts/sync_fixture_hashes.py.
+    """
+    if os.path.exists(p("bank-statement.pdf")) and "--force" not in sys.argv:
+        print("bank-statement.pdf          kept (encrypted, not reproducible; --force to rebuild)")
+        return
+
     tmp = p("_tmp-statement.pdf")
-    c = canvas.Canvas(tmp, pagesize=A4)
+    c = canvas.Canvas(tmp, pagesize=A4, invariant=1)
     w, h = A4
     c.setFont("Helvetica-Bold", 14)
     c.drawString(20 * mm, h - 25 * mm, "OCBC 360 Account  ·  Statement")
     c.setFont("Helvetica", 10)
     c.drawString(20 * mm, h - 33 * mm, "Tan Wei Ling  ·  Account ending 4471  ·  June 2026")
+    # Four rows, each of which changes the case once this file is unlocked:
+    # the S$300 cash the blurry note hints at, the main payment, a PARTIAL
+    # REFUND the claimant did not mention, and the second contractor's S$500.
     rows = [
         ("02 Jun", "FAST TRANSFER  AH SENG", "-300.00"),
         ("20 Jun", "PAYNOW  PRECISION HOME REPAIRS", "-2,000.00"),
+        ("20 Aug", "PAYNOW REFUND  PRECISION HOME REPAIRS", "+400.00"),
         ("28 Aug", "PAYNOW  KIM SENG RENOVATION", "-500.00"),
     ]
     for i, (date, desc, amt) in enumerate(rows):
@@ -253,6 +299,8 @@ def make_password_protected() -> None:
     c.save()
 
     doc = fitz.open(tmp)
+    doc.set_metadata({})
+    doc.xref_set_key(-1, "ID", "[<0102030405060708090a0b0c0d0e0f10><0102030405060708090a0b0c0d0e0f10>]")
     doc.save(
         p("bank-statement.pdf"),
         encryption=fitz.PDF_ENCRYPT_AES_256,
@@ -266,7 +314,7 @@ def make_password_protected() -> None:
 
 def make_truncated() -> None:
     """120 pages, over the 100-page budget. Read partly, marked truncated."""
-    c = canvas.Canvas(p("long-appendix.pdf"), pagesize=A4)
+    c = canvas.Canvas(p("long-appendix.pdf"), pagesize=A4, invariant=1)
     w, h = A4
     for i in range(1, 121):
         c.setFont("Helvetica", 10)
@@ -279,7 +327,7 @@ def make_truncated() -> None:
 
 def make_corrupted() -> None:
     """Valid header, garbage body. Unreadable — must not produce invented text."""
-    c = canvas.Canvas(p("_tmp-corrupt.pdf"), pagesize=A4)
+    c = canvas.Canvas(p("_tmp-corrupt.pdf"), pagesize=A4, invariant=1)
     c.drawString(72, 720, "Site inspection report")
     c.showPage()
     c.save()
@@ -310,7 +358,8 @@ def make_unsupported() -> None:
 if __name__ == "__main__":
     make_quote()
     make_receipt()
-    make_chat()
+    make_chat(full=False)
+    make_chat(full=True)
     make_blurry_note()
     make_unrelated()
     make_password_protected()

@@ -2,9 +2,11 @@
 
 Working doc for the loop. Not a plan — a queue. Plans live in [anson.md](anson.md), [clarence.md](clarence.md), [SHARED-CONTRACT.md](SHARED-CONTRACT.md).
 
-**Now:** M1 · **Owner on deck:** Anson · **Hour 0:** done, on `main`
+**Now:** M2 · **Owner on deck:** Anson · **Done:** Hour 0, M1 — both on `main`
 
 ---
+
+**Scripts:** `npm run dev` · `build` · `typecheck` · `fixtures` (emit + verify against disk) · `check:fixtures` (run the oracle)
 
 ## The loop
 
@@ -37,14 +39,14 @@ Anson is doing this solo since Clarence isn't here yet. It's foundational for bo
 
 ## M1 — Corpus and checklist (Anson)
 
-- [ ] **`fixtures/documents/`** — synthetic set: quote PDF, receipt image, chat screenshots, one blurry scan, one password-protected file, one unrelated file
+- [x] **`fixtures/documents/`** — synthetic set: quote PDF, receipt image, chat screenshots, one blurry scan, one password-protected file, one unrelated file
       *Done when:* every failure mode in FR03 has a file that triggers it
-- [ ] **`fixtures/case.adverse.json`** — seeded contradiction + refund mention + partial performance
+- [x] **`fixtures/case.adverse.ts`** — seeded contradiction + refund mention + partial performance
       *Done when:* it is the confirmation-bias test case for scenario 3
-- [ ] **`lib/assessment/checklist.v1.ts`** — goods/services issue checklist, versioned
+- [x] **`lib/assessment/checklist.v1.ts`** — goods/services issue checklist, versioned
       *Done when:* it carries a version string and the UI labels it *pending legal review*
-- [ ] **Annotate expectations** — expected facts, gaps, route result per fixture
-      *Done when:* there is a test oracle to check the pipeline against
+- [x] **Annotate expectations** — `fixtures/expectations.ts`, run by `npm run check:fixtures`
+      *Done when:* there is a test oracle to check the pipeline against. 36 expectations, and they run unchanged against pipeline output at M2
 
 ---
 

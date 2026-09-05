@@ -16,6 +16,7 @@ import { join } from "node:path";
 
 import type { CaseRecord } from "../lib/contracts";
 import { demoCase } from "../fixtures/case.demo";
+import { adverseCase } from "../fixtures/case.adverse";
 
 const ROOT = process.cwd();
 const DOCS_DIR = join(ROOT, "fixtures", "documents");
@@ -69,7 +70,10 @@ function verifyDocuments(record: CaseRecord, label: string): string[] {
   return problems;
 }
 
-const FIXTURES = [{ name: "case.demo.json", label: "case.demo", data: demoCase }] as const;
+const FIXTURES = [
+  { name: "case.demo.json", label: "case.demo", data: demoCase },
+  { name: "case.adverse.json", label: "case.adverse", data: adverseCase },
+] as const;
 
 const allProblems = FIXTURES.flatMap(({ label, data }) => verifyDocuments(data, label));
 

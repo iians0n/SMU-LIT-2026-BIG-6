@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "fixtures": "tsx scripts/emit-fixtures.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:fixtures": "tsx scripts/check-fixtures.ts"
   },
   "dependencies": {
     "next": "16.3.4",
