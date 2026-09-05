@@ -773,3 +773,22 @@ textarea.field, input.field { margin-top: 6px; }
 @media (prefers-reduced-motion: reduce) {
   .live-dot, .live-meter span { transition: none; }
 }
+
+/* Clearing the case without restarting the server. Quiet by default - it is
+   destructive, and nobody should reach for it by accident. */
+.start-over {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--muted, #5b6472);
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.start-over:hover:not(:disabled) { color: #b91c1c; }
+.start-over:disabled { opacity: 0.45; cursor: not-allowed; }

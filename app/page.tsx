@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { CircleAlert, Mic, Paperclip, Send, Square } from 'lucide-react';
+import { CircleAlert, Mic, Paperclip, RotateCcw, Send, Square } from 'lucide-react';
 import { useCase } from '@/components/case-provider';
 import { ViewState } from '@/components/view-state';
 import { NOT_A_LAWYER } from '@/lib/plain-language';
@@ -199,6 +199,25 @@ function Chat() {
     }
   }, [reload, refreshForm]);
 
+  async function startOver() {
+    if (!window.confirm('Clear everything and start a new case? This cannot be undone.')) return;
+    session.current?.stop();
+    session.current = null;
+    setLive(false);
+    setBusy(true);
+    try {
+      await fetch('/api/case/reset', { method: 'POST' });
+      const fresh: Turn[] = [{ role: 'assistant', content: OPENER }];
+      setTurns(fresh);
+      turnsRef.current = fresh;
+      previousForm.current = new Map();
+      setError(null);
+      await Promise.all([reload(), refreshForm()]);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function toggleLive() {
     if (live) {
       session.current?.stop();
@@ -362,6 +381,11 @@ function Chat() {
         <div className="row" style={{ alignItems: 'baseline' }}>
           <h2 style={{ margin: 0 }}>Your claim form</h2>
           <span className="form-count">{form ? `${form.filled} of ${form.total}` : ''}</span>
+        </div>
+        <div className="row" style={{ marginTop: 2 }}>
+          <button type="button" className="start-over" onClick={() => void startOver()} disabled={busy}>
+            <RotateCcw size={14} aria-hidden="true" /> Start a new case
+          </button>
         </div>
         <p className="small muted" style={{ margin: '4px 0 10px' }}>
           The real CJTS sections, filling in as we talk. Nothing goes in without
