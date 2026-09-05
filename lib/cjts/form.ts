@@ -55,7 +55,15 @@ export interface FormGroup {
 
 export interface DerivedForm {
   groups: FormGroup[];
+  /** Required, fillable-here fields that are done. Counted against `total`. */
   filled: number;
+  /**
+   * Required fields the user can actually complete here.
+   *
+   * Excludes anything only CJTS can issue: counting the pre-filing assessment
+   * number would leave the form permanently short of complete, which reads as
+   * broken rather than as accurate.
+   */
   total: number;
   /**
    * Required fields the user can still supply by talking, in form order. Fields
@@ -81,9 +89,26 @@ interface Spec {
 const claimant = (r: CaseRecord) => r.parties.find((p) => p.role === "claimant");
 const respondent = (r: CaseRecord) => r.parties.find((p) => p.role === "respondent");
 
-/** Confirmed facts only — an unconfirmed fact is a draft, not an answer. */
 function factOf(r: CaseRecord, kind: string) {
   return r.facts.find((f) => f.kind === kind && !f.unknown);
+}
+
+/**
+ * Whether a fact is settled enough to fill a field.
+ *
+ * Something the user said in conversation is already their own account — asking
+ * them to confirm what they just told us is friction that teaches people to
+ * click through confirmations without reading. What genuinely needs confirming
+ * is anything we READ or WORKED OUT, and anything a document contradicts.
+ *
+ * This does not weaken FR04. Its point is that a user confirming their own
+ * recollection is not independent corroboration, and that still holds: this
+ * only decides whether a form field is populated, never whether an issue is
+ * supported by evidence.
+ */
+function settled(f: { origin: string; confirmedByUser: boolean; disputed: boolean }): boolean {
+  if (f.disputed) return false;
+  return f.origin === "user_stated" || f.confirmedByUser;
 }
 
 const SPECS: Spec[] = [
@@ -104,7 +129,10 @@ const SPECS: Spec[] = [
     group: "About you",
     required: true,
     help: "So the tribunal can reach you about your case.",
-    derive: () => null,
+    derive: (r) => {
+      const p = claimant(r);
+      return p?.contact ? { value: p.contact, source: "you told us", confirmed: true } : null;
+    },
   },
   {
     key: "claimant_address",
@@ -193,7 +221,7 @@ const SPECS: Spec[] = [
       return {
         value: formatMoney({ currencyCode: "SGD", minorUnits: total }),
         source: `${parts.length} amount(s) you gave us`,
-        confirmed: parts.every((f) => f.confirmedByUser),
+        confirmed: parts.every(settled),
       };
     },
   },
@@ -211,7 +239,7 @@ const SPECS: Spec[] = [
       return {
         value: f.date.value,
         source: f.statement.slice(0, 70),
-        confirmed: f.confirmedByUser && f.date.precision === "exact" && !f.disputed,
+        confirmed: settled(f) && f.date.precision === "exact",
       };
     },
   },
@@ -229,7 +257,7 @@ const SPECS: Spec[] = [
       return {
         value: parts.map((f) => f.statement).join(" "),
         source: `${parts.length} thing(s) you told us`,
-        confirmed: parts.every((f) => f.confirmedByUser),
+        confirmed: parts.every(settled),
       };
     },
   },
@@ -308,8 +336,13 @@ export function deriveForm(record: CaseRecord): DerivedForm {
 
   return {
     groups,
-    filled: fields.filter((f) => f.status === "filled").length,
-    total: fields.filter((f) => f.required).length,
+    // Must match `total`'s basis or the counter can read "11 of 10", which it
+    // did: optional fields were counted as progress towards a required-only goal.
+    // Same basis as `total`, or the counter reads "11 of 10" - which it did,
+    // because optional fields counted towards a required-only goal. A from_cjts
+    // field can never be "filled", so it is excluded by construction.
+    filled: fields.filter((f) => f.required && f.status === "filled").length,
+    total: fields.filter((f) => f.required && f.status !== "from_cjts").length,
     outstanding: fields
       .filter((f) => f.required && f.status !== "filled" && f.status !== "from_cjts")
       .map((f) => f.label),

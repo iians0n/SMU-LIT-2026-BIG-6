@@ -62,6 +62,8 @@ export interface Party {
   acraProfileNeeded: boolean;
   /** Needed on the claim form so the claim can be served. */
   address: string | null;
+  /** Phone or email, so the tribunal can reach them. */
+  contact: string | null;
   inSingapore: boolean | null;
   notes: string | null;
 }

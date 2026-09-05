@@ -85,6 +85,7 @@ export const TOOLS = [
           name: { type: "string", description: "Full name of the person, or the registered name of the business." },
           kind: { type: "string", enum: ["individual", "business", "unknown"], description: "Only say business if they told you it is one." },
           address: { type: "string", description: "Their address, if given. Omit otherwise." },
+          contact: { type: "string", description: "Phone number or email, if given. Omit otherwise." },
           inSingapore: { type: "boolean", description: "Only if they said so." },
         },
         required: ["role", "name"],
@@ -244,6 +245,7 @@ function recordParty(args: Record<string, unknown>): ToolResult {
     ? (String(args.kind) as "individual" | "business" | "unknown")
     : "unknown";
   const address = typeof args.address === "string" && args.address.trim() ? args.address.trim() : null;
+  const contact = typeof args.contact === "string" && args.contact.trim() ? args.contact.trim() : null;
 
   patchCase((draft) => {
     const existing = draft.parties.find((p) => p.role === role);
@@ -251,6 +253,7 @@ function recordParty(args: Record<string, unknown>): ToolResult {
       existing.name = name;
       if (kind !== "unknown") existing.kind = kind;
       if (address) existing.address = address;
+      if (contact) existing.contact = contact;
       if (typeof args.inSingapore === "boolean") existing.inSingapore = args.inSingapore;
       // A business respondent needs a recent ACRA profile at filing (S3).
       existing.acraProfileNeeded = existing.role === "respondent" && existing.kind === "business";
@@ -262,6 +265,7 @@ function recordParty(args: Record<string, unknown>): ToolResult {
         kind,
         acraProfileNeeded: role === "respondent" && kind === "business",
         address,
+        contact,
         inSingapore: typeof args.inSingapore === "boolean" ? args.inSingapore : null,
         notes: null,
       });

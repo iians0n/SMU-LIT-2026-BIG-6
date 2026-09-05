@@ -354,7 +354,7 @@ h3 { margin: 0; font-size: 16px; line-height: 1.35; font-weight: 650; }
    targets, one thing to do at a time.
    --------------------------------------------------------------------------- */
 
-.chat-layout { display: grid; grid-template-columns: minmax(0, 1fr) 20rem; gap: 26px; align-items: start; }
+.chat-layout { display: grid; grid-template-columns: minmax(0, 1fr) 25rem; gap: 26px; align-items: start; }
 .chat-main { display: flex; flex-direction: column; min-height: calc(100vh - 190px); }
 
 .chat-scroll {
@@ -464,13 +464,15 @@ h3 { margin: 0; font-size: 16px; line-height: 1.35; font-weight: 650; }
   color: var(--muted, #5b6472);
 }
 .form-field {
-  padding: 9px 0 9px 12px;
-  border-left: 3px solid var(--line);
-  margin-bottom: 7px;
+  padding: 10px 12px 10px 13px;
+  border-left: 4px solid var(--line);
+  border-radius: 0 8px 8px 0;
+  margin-bottom: 8px;
+  transition: background 380ms ease, border-color 380ms ease;
 }
-.form-label { display: block; font-size: 0.96rem; line-height: 1.4; }
+.form-label { display: block; font-size: 1rem; line-height: 1.4; }
 .form-label em { font-style: normal; color: var(--muted, #5b6472); font-size: 0.86rem; }
-.form-field strong { display: block; margin-top: 3px; font-size: 1.02rem; line-height: 1.45; }
+.form-field strong { display: block; margin-top: 4px; font-size: 1.08rem; line-height: 1.45; font-weight: 650; }
 .form-source,
 .form-help {
   display: block;
@@ -483,3 +485,47 @@ h3 { margin: 0; font-size: 16px; line-height: 1.35; font-weight: 650; }
 .form-unconfirmed { border-left-color: #b45309; }
 .form-missing { border-left-color: var(--line); }
 .form-from_cjts { border-left-color: #6b7280; }
+
+
+/* Watching the form build itself out of the conversation is the demo, so a
+   field that has just landed says so for a couple of seconds rather than
+   changing silently and being missed. */
+.form-count {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--green, #0f766e);
+}
+.form-progress {
+  height: 8px;
+  border-radius: 99px;
+  background: var(--line);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.form-progress span {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--green, #0f766e);
+  transition: width 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.form-just {
+  animation: form-land 2.4s ease-out;
+}
+@keyframes form-land {
+  0%   { background: rgba(21, 128, 61, 0.24); transform: translateX(5px); }
+  12%  { background: rgba(21, 128, 61, 0.24); transform: translateX(0); }
+  100% { background: transparent; }
+}
+/* Respect a stated preference for less motion; the colour still changes. */
+@media (prefers-reduced-motion: reduce) {
+  .form-just { animation: none; background: rgba(21, 128, 61, 0.12); }
+  .form-progress span { transition: none; }
+}
+
+@media (max-width: 900px) {
+  /* On a phone the form goes above the conversation, so it is still the thing
+     you watch rather than something below the fold. */
+  .chat-side { max-height: 22rem; }
+}

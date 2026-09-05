@@ -70,6 +70,9 @@ function Chat() {
   const [micConsent, setMicConsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<DerivedForm | null>(null);
+  /** Keys that changed on the last refresh, so they can flash as they land. */
+  const [justFilled, setJustFilled] = useState<Set<string>>(new Set());
+  const previousForm = useRef<Map<string, string>>(new Map());
   const recorder = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
@@ -89,7 +92,28 @@ function Chat() {
 
   const refreshForm = useCallback(async () => {
     const res = await fetch('/api/form', { cache: 'no-store' });
-    if (res.ok) setForm(await res.json());
+    if (!res.ok) return;
+    const next: DerivedForm = await res.json();
+
+    // Diff against the previous read. A field that just changed is worth
+    // pointing at - in a live demo the whole story is watching the form build
+    // itself out of the conversation.
+    const seen = new Map<string, string>();
+    const changed = new Set<string>();
+    for (const group of next.groups) {
+      for (const f of group.fields) {
+        const signature = `${f.status}:${f.value ?? ''}`;
+        seen.set(f.key, signature);
+        const before = previousForm.current.get(f.key);
+        if (before !== undefined && before !== signature) changed.add(f.key);
+      }
+    }
+    previousForm.current = seen;
+    setForm(next);
+    if (changed.size) {
+      setJustFilled(changed);
+      window.setTimeout(() => setJustFilled(new Set()), 2600);
+    }
   }, []);
 
   useEffect(() => {
@@ -287,11 +311,23 @@ function Chat() {
       <aside className="chat-side">
         <div className="row" style={{ alignItems: 'baseline' }}>
           <h2 style={{ margin: 0 }}>Your claim form</h2>
-          <span className="small muted">{form ? `${form.filled} of ${form.total}` : ''}</span>
+          <span className="form-count">{form ? `${form.filled} of ${form.total}` : ''}</span>
         </div>
-        <p className="small muted" style={{ margin: '4px 0 14px' }}>
+        <p className="small muted" style={{ margin: '4px 0 10px' }}>
           Fills in as we talk. Nothing goes in without something to point at.
         </p>
+        {form && (
+          <div
+            className="form-progress"
+            role="progressbar"
+            aria-valuenow={form.filled}
+            aria-valuemin={0}
+            aria-valuemax={form.total}
+            aria-label={`${form.filled} of ${form.total} fields filled`}
+          >
+            <span style={{ width: `${form.total ? (form.filled / form.total) * 100 : 0}%` }} />
+          </div>
+        )}
 
         {!form ? (
           <p className="muted">Loading…</p>
@@ -300,7 +336,10 @@ function Chat() {
             <div key={group.name} className="form-group">
               <h3>{group.name}</h3>
               {group.fields.map((f) => (
-                <div key={f.key} className={`form-field form-${f.status}`}>
+                <div
+                  key={f.key}
+                  className={`form-field form-${f.status}${justFilled.has(f.key) ? ' form-just' : ''}`}
+                >
                   <span className="form-label">
                     {f.label}
                     {f.required && f.status !== 'filled' && <em> · needed</em>}
