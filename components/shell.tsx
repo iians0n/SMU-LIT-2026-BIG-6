@@ -84,7 +84,7 @@ function Navigation({ close }: { close?: () => void }) {
 
       <div className="privacy-note">
         <ShieldCheck size={17} aria-hidden="true" />
-        <span>Demo workspace<br /><small>Nothing is filed from here</small></span>
+        <span>Preparation only<br /><small>Nothing is filed or sent from here</small></span>
       </div>
     </>
   );
@@ -162,10 +162,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <Link className="button button-quiet" href="/sources">
               <CircleHelp size={18} aria-hidden="true" /><span>Help</span>
             </Link>
-            <div className="status-chip" aria-label="Using a demonstration case">
-              <span className="status-dot" aria-hidden="true" />
-              <span>Demo case</span>
-            </div>
+
           </div>
         </header>
         <div className="content">{children}</div>
