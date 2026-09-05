@@ -114,13 +114,17 @@ No events, no pub/sub, no callbacks. One integer.
 
 Merge to `main` and click through the whole app together at the end of each milestone. Not at the end.
 
-| After | We check |
-| --- | --- |
-| M1 | Contracts compile; fixture case renders in Clarence's shell |
-| M2 | Anson's real pipeline output replaces the fixture with no shell changes |
-| M3 | Evidence matrix and overview read the same case version |
-| M4 | A fact edit in Anson's UI flips Clarence's draft to Needs review |
-| M5 | Full demo run, twice, including the unsupported-case referral |
+| After | We check | Status |
+| --- | --- | --- |
+| M1 | Contracts compile; fixture case renders in Clarence's shell | done |
+| M2 | Anson's real pipeline output replaces the fixture with no shell changes | done — upload writes into the same record the shell reads |
+| M3 | Evidence matrix and overview read the same case version | done |
+| M4 | A fact edit in Anson's UI flips Clarence's draft to Needs review | done — verified against the running server, v6→v7 left the draft at v6 |
+| M5 | Full demo run, twice, including the unsupported-case referral | done — `npm run demo` |
+
+**Anson's half is complete.** Remaining work is on Clarence's track in [TODO.md](TODO.md), plus his M5 scenarios (4, 6, 7b). Scenario 4 and most of 6 are already covered in `tests/scenarios.test.ts` — worth reading before duplicating them.
+
+Two changes landed in Clarence's files, both flagged in their commits: the drafting fixes (narrative rendered structured values instead of prose; `readyForTransfer` was unreachable) and `verificationRecord()` in `lib/workflow`, so `/api/verification` shows pipeline events as well as dashboard ones.
 
 ## 7. Shared refusals
 
