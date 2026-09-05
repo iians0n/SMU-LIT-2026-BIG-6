@@ -10,6 +10,7 @@
 import type { Fact, QuestionTopic } from "@/lib/contracts";
 import { planNextQuestion, unresolvedTopics } from "@/lib/planner";
 import { bumpVersion, getCase, patchCase } from "@/lib/store";
+import { synchroniseDerivedCase } from "@/lib/workflow";
 
 const TOPIC_TO_FACT_KIND: Record<QuestionTopic, Fact["kind"]> = {
   parties: "party",
@@ -112,6 +113,7 @@ export async function POST(request: Request) {
   // Only a new fact changes what downstream work rests on. Setting a question
   // aside records a decision without altering the record.
   const version = answered ? bumpVersion(`answered ${body.questionId}`) : record.case.version;
+  if (answered) synchroniseDerivedCase();
 
   return Response.json({
     caseVersion: version,

@@ -270,7 +270,7 @@ p { text-wrap: pretty; }
 .metric {
   min-height: 72px;
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   border-bottom: 1px solid var(--line-soft);

@@ -20,14 +20,16 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useCase } from '@/components/case-provider';
 
 const primary = [
   ['/', 'Talk it through', MessagesSquare, ''],
   ['/documents', 'Your documents', FolderOpen, '1'],
   ['/chronology', 'Check the facts', UserRound, '2'],
   ['/evidence', 'What your files show', FileSearch, '3'],
-  ['/options', 'Next steps', Route, '4'],
-  ['/prepare', 'Your pack', FileArchive, '5'],
+  ['/route', 'Check the filing route', Route, '4'],
+  ['/options', 'Next steps', ClipboardCheck, '5'],
+  ['/prepare', 'Your pack', FileArchive, '6'],
 ] as const;
 
 const secondary = [
@@ -38,14 +40,40 @@ const secondary = [
 
 function Navigation({ close }: { close?: () => void }) {
   const path = usePathname();
-  const activeIndex = primary.findIndex(([href]) => href === path);
+  const { record, workflow } = useCase();
+  const complete = (href: string): boolean => {
+    if (!record || !workflow) return false;
+    if (href === '/') return record.facts.length > 0 || record.parties.length > 0;
+    if (href === '/documents') {
+      return record.documents.length > 0 && record.documents.every((document) => document.processingStatus !== 'processing');
+    }
+    if (href === '/chronology') {
+      return record.facts.length > 0 && record.facts.every((fact) => fact.confirmedByUser || fact.unknown) && !record.facts.some((fact) => fact.disputed);
+    }
+    if (href === '/evidence') {
+      return record.documents.length > 0 && record.issues.length > 0 && record.issues.every((issue) => issue.sourceCaseVersion === record.version);
+    }
+    if (href === '/route') {
+      return workflow.route.sourceCaseVersion === record.version && workflow.route.reviewed;
+    }
+    if (href === '/options') return workflow.option !== null;
+    if (href === '/prepare') {
+      const populated = workflow.draft.fields.filter((field) => field.value);
+      return workflow.draft.sourceCaseVersion === record.version &&
+        workflow.draft.contradictionsAvailable &&
+        populated.every((field) => field.reviewedAt && field.sourceCaseVersion === record.version) &&
+        workflow.draft.gapsAcknowledged &&
+        !workflow.draft.warnings.some((warning) => warning.includes('differs from'));
+    }
+    return false;
+  };
 
   return (
     <>
       <div className="side-heading">Your preparation</div>
       <nav className="side-nav" aria-label="Preparation stages">
-        {primary.map(([href, label, Icon, step], index) => {
-          const complete = activeIndex > index && index > 0;
+        {primary.map(([href, label, Icon, step]) => {
+          const isComplete = complete(href);
           return (
             <Link
               key={href}
@@ -53,10 +81,10 @@ function Navigation({ close }: { close?: () => void }) {
               onClick={close}
               className="side-link"
               aria-current={path === href ? 'page' : undefined}
-              data-complete={complete || undefined}
+              data-complete={isComplete || undefined}
             >
               <span className="side-icon" aria-hidden="true">
-                {complete ? <Check size={15} strokeWidth={2.5} /> : <Icon size={18} />}
+                {isComplete ? <Check size={15} strokeWidth={2.5} /> : <Icon size={18} />}
               </span>
               <span>{label}</span>
               {step && <span className="side-step" aria-hidden="true">{step}</span>}
