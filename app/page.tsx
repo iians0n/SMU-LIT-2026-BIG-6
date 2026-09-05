@@ -7,6 +7,7 @@ import { useCase } from '@/components/case-provider';
 import { ViewState } from '@/components/view-state';
 import { NOT_A_LAWYER } from '@/lib/plain-language';
 import { FORM_SOURCE, type DerivedForm } from '@/lib/cjts/form';
+import { LiveSession } from '@/lib/voice/live-session';
 
 interface Turn {
   role: 'user' | 'assistant';
@@ -26,7 +27,7 @@ const OPENER =
  * the device, so the consent wording below has to say so. FR01 requires that
  * before the microphone is activated, not after.
  */
-type MicState = "idle" | "asking" | "recording" | "transcribing";
+type MicState = "idle" | "transcribing";
 
 function SetupNeeded() {
   return (
@@ -71,8 +72,12 @@ function Chat() {
   /** Keys that changed on the last refresh, so they can flash as they land. */
   const [justFilled, setJustFilled] = useState<Set<string>>(new Set());
   const previousForm = useRef<Map<string, string>>(new Map());
-  const recorder = useRef<MediaRecorder | null>(null);
-  const chunks = useRef<Blob[]>([]);
+  /** Hands-free: talk, pause, and the turn sends itself. */
+  const [live, setLive] = useState(false);
+  const [level, setLevel] = useState(0);
+  const session = useRef<LiveSession | null>(null);
+  /** Callbacks outlive renders, so the transcript is read from a ref not state. */
+  const turnsRef = useRef<Turn[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -151,60 +156,67 @@ function Chat() {
     }
   }, [turns, busy, reload, refreshForm]);
 
-  async function startRecording() {
-    setError(null);
-    setMic("asking");
+  /**
+   * Transcribe one spoken turn and answer it.
+   *
+   * The result goes straight into the conversation rather than into the input
+   * box: in hands-free mode the pause IS the send, and routing it through a
+   * box would just put a button back in the way.
+   */
+  const sendSpoken = useCallback(async (audio: Blob) => {
+    setMic('transcribing');
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      chunks.current = [];
-      const rec = new MediaRecorder(stream);
-      rec.ondataavailable = (e) => { if (e.data.size > 0) chunks.current.push(e.data); };
-      rec.onstop = async () => {
-        // Release the microphone as soon as we stop, not when the page closes.
-        stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(chunks.current, { type: rec.mimeType || "audio/webm" });
-        chunks.current = [];
-        if (blob.size === 0) { setMic("idle"); return; }
+      const body = new FormData();
+      body.append('audio', new File([audio], 'turn.webm', { type: audio.type }));
+      const heard = await fetch('/api/transcribe', { method: 'POST', body });
+      const transcript = await heard.json();
+      if (!heard.ok) throw new Error(transcript.error ?? 'That could not be read.');
+      if (transcript.empty || !transcript.text?.trim()) { setMic('idle'); return; }
 
-        setMic("transcribing");
-        try {
-          const form = new FormData();
-          form.append("audio", new File([blob], "answer.webm", { type: blob.type }));
-          const res = await fetch("/api/transcribe", { method: "POST", body: form });
-          const body = await res.json();
-          if (!res.ok) throw new Error(body.error ?? "That recording could not be read.");
-          if (body.empty) setError("We did not catch anything. Try again, or type it.");
-          // Into the box, not straight into the conversation: they read it and
-          // fix it before it counts as something they said.
-          else setDraft((d) => (d ? `${d} ${body.text}` : body.text));
-        } catch (e) {
-          setError(e instanceof Error ? e.message : "That recording could not be read.");
-        } finally {
-          setMic("idle");
-        }
-      };
-      rec.start();
-      recorder.current = rec;
-      setMic("recording");
-    } catch {
-      // A refused microphone is not a dead end: typing does everything.
-      setError("No microphone access, so speaking is off. You can type instead — nothing needs the microphone.");
-      setMic("idle");
+      const next: Turn[] = [...turnsRef.current, { role: 'user', content: transcript.text.trim() }];
+      setTurns(next);
+      turnsRef.current = next;
+      setMic('idle');
+      setBusy(true);
+
+      const chat = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: next.map(({ role, content }) => ({ role, content })) }),
+      });
+      const reply = await chat.json();
+      if (!chat.ok) throw new Error(reply.error ?? 'The assistant could not reply.');
+
+      const after: Turn[] = [...next, { role: 'assistant', content: reply.reply, actions: reply.actions }];
+      setTurns(after);
+      turnsRef.current = after;
+      if (reply.mutated) await Promise.all([reload(), refreshForm()]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'That could not be read.');
+      setMic('idle');
+    } finally {
+      setBusy(false);
     }
-  }
+  }, [reload, refreshForm]);
 
-  function stopRecording() {
-    recorder.current?.stop();
-    recorder.current = null;
-  }
-
-  function micButton() {
-    if (mic === "recording") return stopRecording();
-    if (mic === "idle") {
-      // Explained once, before the microphone is ever opened.
-      if (!micConsent) { setMicConsent(true); return; }
-      void startRecording();
+  function toggleLive() {
+    if (live) {
+      session.current?.stop();
+      session.current = null;
+      setLive(false);
+      setLevel(0);
+      return;
     }
+    // Explained once, before the microphone is ever opened.
+    if (!micConsent) { setMicConsent(true); return; }
+    const started = new LiveSession({
+      onSegment: sendSpoken,
+      onLevel: setLevel,
+      onError: (message) => { setError(message); setLive(false); },
+    });
+    session.current = started;
+    setLive(true);
+    void started.start();
   }
 
   async function upload(files: FileList) {
@@ -261,8 +273,8 @@ function Chat() {
               below for you to read and correct before you send it.
             </p>
             <div className="chat-buttons" style={{ justifyContent: 'flex-start', marginTop: 12 }}>
-              <button type="button" className="chat-send" onClick={() => { setMicConsent(false); void startRecording(); }}>
-                Start recording
+              <button type="button" className="chat-send" onClick={() => { setMicConsent(false); toggleLive(); }}>
+                Start talking
               </button>
               <button type="button" className="chat-icon" style={{ width: 'auto', padding: '0 18px' }} onClick={() => setMicConsent(false)}>
                 Not now
@@ -270,8 +282,29 @@ function Chat() {
             </div>
           </div>
         )}
-        {mic === 'recording' && <div className="mic-live" role="status">● Recording — press the square to stop</div>}
-        {mic === 'transcribing' && <div className="mic-live" role="status">Turning your words into text…</div>}
+        {live && (
+          <div className="live-bar" role="status">
+            <span className={`live-dot${level > 0.08 ? ' on' : ''}`} aria-hidden="true" />
+            <span className="live-meter" aria-hidden="true">
+              {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+                <span key={i} className={level * 8 > i ? 'on' : ''} />
+              ))}
+            </span>
+            <span className="live-text">
+              {mic === 'transcribing'
+                ? 'Writing down what you said…'
+                : busy
+                  ? 'Thinking…'
+                  : level > 0.08
+                    ? 'Listening…'
+                    : 'Go ahead — pause when you are done and I will pick it up'}
+            </span>
+            <button type="button" className="chat-icon" onClick={toggleLive} aria-label="Stop talking">
+              <Square size={18} />
+            </button>
+          </div>
+        )}
+        {!live && mic === 'transcribing' && <div className="mic-live" role="status">Writing down what you said…</div>}
 
         <form
           className="chat-input"
@@ -310,12 +343,12 @@ function Chat() {
             </button>
             <button
               type="button"
-              className={`chat-icon ${mic === 'recording' ? 'on' : ''}`}
-              onClick={micButton}
-              disabled={busy || mic === 'transcribing' || mic === 'asking'}
-              aria-label={mic === 'recording' ? 'Stop recording' : 'Speak your answer'}
+              className={`chat-icon ${live ? 'on' : ''}`}
+              onClick={toggleLive}
+              aria-label={live ? 'Stop talking' : 'Talk instead of typing'}
+              title={live ? 'Stop talking' : 'Talk instead of typing'}
             >
-              {mic === 'recording' ? <Square size={20} aria-hidden="true" /> : <Mic size={22} aria-hidden="true" />}
+              {live ? <Square size={20} aria-hidden="true" /> : <Mic size={22} aria-hidden="true" />}
             </button>
             <button type="submit" className="chat-send" disabled={busy || !draft.trim()}>
               <Send size={20} aria-hidden="true" /> Send

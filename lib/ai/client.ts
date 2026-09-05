@@ -261,15 +261,33 @@ export async function completeJson<T>(
  * The audio is not retained by us. It is sent, transcribed, and dropped — only
  * the text is kept, and the user edits that text before anything is recorded.
  */
+/**
+ * Steers transcription towards the vocabulary this product actually hears.
+ *
+ * Measured on the same recording of "My name is Lim Mei Hua. Goodwork
+ * Renovations took three thousand five hundred dollars on the fourth of March
+ * twenty twenty six":
+ *
+ *   without hint:  "Lemahoua ... $3,500 ... the 4th of the 20th of March 26"
+ *   with hint:     "Lim Mei Hua ... S$3,500 ... 4 March 2026"
+ *
+ * Names, dates and amounts are precisely the values FR01 requires explicit
+ * confirmation for, and precisely the ones speech recognition mangles while
+ * sounding perfectly fluent. A prompt is a cheap way to lose most of that.
+ */
+const TRANSCRIPTION_HINT =
+  "Singapore small claims dispute. Names may be Chinese, Malay or Indian, such as Lim Mei Hua or Nurul Aisyah. " +
+  "Amounts are in Singapore dollars, written S$3,500. Dates are day-month-year, written 4 March 2026. " +
+  "Businesses end in Pte Ltd. Common words: contractor, renovation, deposit, invoice, receipt, refund, NRIC, UEN, CJTS.";
+
 export async function transcribeAudio(file: File): Promise<string> {
   const cfg = modelConfig();
   try {
     const result = await client().audio.transcriptions.create({
       file,
       model: cfg.transcribeModel,
-      // Singapore English. Naming it improves accuracy on local names and
-      // amounts, which are the values most costly to get wrong.
       language: "en",
+      prompt: TRANSCRIPTION_HINT,
     });
     return (result as unknown as { text?: string }).text?.trim() ?? "";
   } catch (err) {

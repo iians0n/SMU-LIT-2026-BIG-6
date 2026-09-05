@@ -139,13 +139,18 @@ export async function runTurn(history: ChatMessage[]): Promise<TurnResult> {
       const result = await runTool(call.function.name, args);
       mutated = mutated || result.mutated;
       if (result.mutated) {
-        actions.push(
-          call.function.name === "record_fact"
-            ? `Noted: ${String(args.statement ?? "").slice(0, 90)}`
-            : call.function.name === "correct_fact"
-              ? `Corrected an earlier note`
-              : `Recorded as not known`,
-        );
+        // Every tool needs its own line here. The fallback used to catch
+        // record_party and set_claim_type and label both "Recorded as not
+        // known", so the transcript said the opposite of what had happened.
+        const describe: Record<string, () => string> = {
+          record_fact: () => `Noted: ${String(args.statement ?? "").slice(0, 90)}`,
+          correct_fact: () => "Corrected an earlier note",
+          record_party: () =>
+            `Added to the form: ${args.role === "respondent" ? "who you are claiming against" : "your details"} — ${String(args.name ?? "")}`,
+          set_claim_type: () => `Set the nature of the dispute`,
+          note_unknown: () => "Recorded as not known",
+        };
+        actions.push(describe[call.function.name]?.() ?? `Updated the case`);
       }
       messages.push({ role: "tool", tool_call_id: call.id, content: result.content });
     }

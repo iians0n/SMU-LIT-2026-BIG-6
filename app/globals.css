@@ -733,3 +733,43 @@ textarea.field, input.field { margin-top: 6px; }
      you watch rather than something below the fold. */
   .chat-side { max-height: 22rem; }
 }
+
+
+/* Hands-free listening. The meter matters more than it looks: without a visible
+   response to your voice there is no way to tell the difference between "still
+   listening" and "broken", and people start repeating themselves. */
+.live-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 10px;
+  padding: 12px 16px;
+  border: 2px solid var(--green, #0f766e);
+  border-radius: 14px;
+  font-size: 1.04rem;
+}
+.live-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 99px;
+  background: var(--line);
+  flex: none;
+  transition: background 120ms linear, transform 120ms linear;
+}
+.live-dot.on { background: #b91c1c; transform: scale(1.25); }
+
+.live-meter { display: flex; align-items: flex-end; gap: 3px; height: 24px; flex: none; }
+.live-meter span {
+  width: 4px;
+  height: 5px;
+  border-radius: 2px;
+  background: var(--line);
+  transition: height 90ms ease-out, background 90ms linear;
+}
+.live-meter span.on { height: 22px; background: var(--green, #0f766e); }
+
+.live-text { flex: 1; color: var(--muted, #5b6472); line-height: 1.45; }
+
+@media (prefers-reduced-motion: reduce) {
+  .live-dot, .live-meter span { transition: none; }
+}
