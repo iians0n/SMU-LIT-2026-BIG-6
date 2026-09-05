@@ -119,3 +119,232 @@ h3 { margin: 0; font-size: 16px; line-height: 1.35; font-weight: 650; }
 @media (prefers-reduced-transparency: reduce) {
   .topbar { backdrop-filter: none; background: white; }
 }
+
+
+/* Stage numbering and sidebar section headings — added so the six stages read
+   as a sequence rather than as nine equal destinations. */
+.side-heading {
+  padding: 0 14px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted, #6b7280);
+}
+.side-link { position: relative; }
+.side-step {
+  margin-left: auto;
+  min-width: 21px;
+  height: 21px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted, #6b7280);
+  background: rgba(0, 0, 0, 0.05);
+}
+.side-link[aria-current="page"] .side-step {
+  background: var(--green, #0f766e);
+  color: #fff;
+}
+.orientation {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-bottom: 22px;
+  background: var(--surface-2, rgba(0, 0, 0, 0.02));
+}
+.orientation h2 { margin: 0 0 6px; font-size: 1.05rem; }
+.orientation p { margin: 0 0 10px; line-height: 1.6; }
+.orientation ol { margin: 10px 0 0; padding-left: 20px; line-height: 1.9; }
+
+/* ---------------------------------------------------------------------------
+   Guided walkthrough.
+
+   Sized for someone who is not young, not technical, and possibly upset. That
+   means: one column at a comfortable reading measure, body text well above the
+   14px the dashboard uses, touch targets that clear the 44px minimum with room
+   to spare, and no information that is not the task or the reason for it.
+   --------------------------------------------------------------------------- */
+
+.guide-card {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 8px 4px 48px;
+  font-size: 1.19rem;
+  line-height: 1.7;
+}
+
+.guide-eyebrow {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted, #5b6472);
+}
+
+.guide-h1 {
+  margin: 0 0 18px;
+  font-size: 2.05rem;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+
+.guide-lead { margin: 0 0 18px; }
+
+.guide-help,
+.guide-fineprint {
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--muted, #5b6472);
+}
+.guide-fineprint {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 32px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+/* One unmissable action per screen. */
+.guide-primary,
+.guide-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 60px;
+  padding: 0 28px;
+  border-radius: 12px;
+  font-size: 1.19rem;
+  font-weight: 650;
+  cursor: pointer;
+  text-decoration: none;
+  border: 2px solid transparent;
+}
+.guide-primary {
+  width: 100%;
+  margin: 26px 0 0;
+  background: var(--green, #0f766e);
+  color: #fff;
+}
+.guide-primary:hover { filter: brightness(1.08); }
+.guide-secondary {
+  background: transparent;
+  border-color: var(--line);
+  color: inherit;
+  min-height: 52px;
+  font-size: 1.05rem;
+  padding: 0 20px;
+}
+.guide-secondary:hover { background: rgba(0, 0, 0, 0.04); }
+
+/* Focus has to be obvious, not tasteful. */
+.guide-primary:focus-visible,
+.guide-secondary:focus-visible,
+.guide-card a:focus-visible {
+  outline: 3px solid var(--green, #0f766e);
+  outline-offset: 3px;
+}
+
+.guide-nav {
+  display: flex;
+  gap: 12px;
+  margin-top: 22px;
+  flex-wrap: wrap;
+}
+
+.guide-progress {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 22px;
+}
+.guide-progress span {
+  height: 7px;
+  flex: 1;
+  border-radius: 99px;
+  background: var(--line);
+}
+.guide-progress span.on { background: var(--green, #0f766e); }
+
+.guide-note {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 18px 20px;
+  margin: 22px 0 0;
+  border-radius: 12px;
+  background: var(--surface-2, rgba(0, 0, 0, 0.035));
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+.guide-tally {
+  display: flex;
+  gap: 14px;
+  margin: 22px 0 0;
+}
+.guide-tally > div {
+  flex: 1;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.guide-tally strong { display: block; font-size: 2rem; line-height: 1.1; }
+.guide-tally span { font-size: 1rem; color: var(--muted, #5b6472); }
+
+.guide-list {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0 0;
+}
+.guide-list li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.guide-status { list-style: none; padding: 0; margin: 22px 0 0; }
+.guide-status li {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 15px 18px;
+  margin-bottom: 10px;
+  border-radius: 12px;
+  border-left: 6px solid var(--line);
+  background: var(--surface-2, rgba(0, 0, 0, 0.03));
+}
+.guide-status strong { font-size: 1.6rem; min-width: 1.4em; }
+/* Colour is the second signal. The words carry the meaning on their own. */
+.guide-status-good { border-left-color: #15803d; }
+.guide-status-warn { border-left-color: #b45309; }
+.guide-status-bad  { border-left-color: #b91c1c; }
+.guide-status-neutral { border-left-color: #6b7280; }
+
+.guide-quote {
+  margin: 20px 0 0;
+  padding: 18px 20px;
+  border-left: 5px solid var(--green, #0f766e);
+  border-radius: 0 12px 12px 0;
+  background: var(--surface-2, rgba(0, 0, 0, 0.03));
+}
+.guide-source {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 0.98rem;
+  color: var(--muted, #5b6472);
+}
+
+@media (max-width: 640px) {
+  .guide-card { font-size: 1.12rem; padding-bottom: 32px; }
+  .guide-h1 { font-size: 1.7rem; }
+  .guide-tally { flex-direction: column; }
+}

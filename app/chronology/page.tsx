@@ -5,21 +5,22 @@ import { useCase } from '@/components/case-provider';
 import { ViewState } from '@/components/view-state';
 import { Badge, Button, PageHeader } from '@/components/ui';
 import type { Fact } from '@/lib/dashboard/contracts';
+import { ORIGIN_PLAIN } from '@/lib/plain-language';
 
 const ORIGIN = {
-  user_stated: { label: 'You told us', Icon: User },
-  document_extracted: { label: 'From a document', Icon: FileText },
-  inferred: { label: 'Worked out from other information', Icon: CircleHelp },
+  user_stated: { label: ORIGIN_PLAIN.user_stated, Icon: User },
+  document_extracted: { label: ORIGIN_PLAIN.document_extracted, Icon: FileText },
+  inferred: { label: ORIGIN_PLAIN.inferred, Icon: CircleHelp },
 } as const;
 
 /** Origin and confirmation are separate on purpose — see the note below the list. */
 function statusBadges(fact: Fact) {
   const out: { label: string; tone: 'neutral' | 'good' | 'warn' | 'bad' }[] = [];
-  if (fact.confirmedByUser) out.push({ label: 'You confirmed', tone: 'good' });
-  if (fact.disputed) out.push({ label: 'Conflicts with other material', tone: 'warn' });
+  if (fact.confirmedByUser) out.push({ label: 'You said this is right', tone: 'good' });
+  if (fact.disputed) out.push({ label: 'Your files disagree about this', tone: 'warn' });
   if (fact.unknown) out.push({ label: 'Not known', tone: 'neutral' });
   if (!fact.confirmedByUser && !fact.disputed && !fact.unknown) {
-    out.push({ label: 'Not yet confirmed', tone: 'neutral' });
+    out.push({ label: 'Not checked yet', tone: 'neutral' });
   }
   return out;
 }
@@ -73,7 +74,7 @@ function Entry({ fact, date }: { fact: Fact; date: string | null }) {
               <Badge key={b.label} label={b.label} tone={b.tone} />
             ))}
             {fact.sourceLinks.length === 0 && fact.origin === 'user_stated' && (
-              <Badge label="No supporting document" tone="neutral" />
+              <Badge label="No document for this" tone="neutral" />
             )}
           </div>
         </div>
@@ -142,8 +143,8 @@ function ChronologyPage() {
     <>
       <PageHeader
         eyebrow="Stage 3"
-        title="Confirm what happened"
-        description="Check that we understood you. Correct anything that is wrong before it reaches your draft."
+        title="Check we understood"
+        description="We wrote down what we think happened. If anything is wrong, change it — what you say wins."
         action={<Badge label={disputed > 0 ? 'Needs review' : unconfirmed > 0 ? 'In progress' : 'Reviewed'} tone={disputed > 0 ? 'warn' : 'neutral'} />}
       />
 

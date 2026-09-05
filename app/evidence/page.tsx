@@ -5,36 +5,19 @@ import { useCase } from '@/components/case-provider';
 import { ViewState } from '@/components/view-state';
 import { Badge, PageHeader } from '@/components/ui';
 import type { Case, Excerpt, IssueAssessment } from '@/lib/dashboard/contracts';
+import { SUPPORT_PLAIN, NOT_A_SCORE } from '@/lib/plain-language';
 
 /**
  * Label first, colour second. PRD §3 requires every badge to carry a text label
  * and treats colour as supplementary, so the page has to read correctly in
  * greyscale and to a screen reader.
  */
-const STATUS = {
-  supported: {
-    label: 'Supported',
-    tone: 'good',
-    meaning:
-      'Material we found points directly at this. That is not a finding that it is true, or that it is legally enough.',
-  },
-  partial_or_disputed: {
-    label: 'Partial or disputed',
-    tone: 'warn',
-    meaning: 'Support is incomplete, indirect, or contradicted by something else in your files.',
-  },
-  missing: {
-    label: 'Support missing',
-    tone: 'bad',
-    meaning:
-      'We found nothing in your files supporting this. That does not mean it did not happen — it means nothing here shows it.',
-  },
-  not_assessed: {
-    label: 'Not assessed',
-    tone: 'neutral',
-    meaning: 'We could not assess this, so nothing should be read into the absence of a result.',
-  },
-} as const;
+/**
+ * Wording comes from lib/plain-language. "Supported" and "Partial or disputed"
+ * are precise for us and read as a grade to everyone else — and a red badge
+ * that a user hears as "you have no case" does real harm.
+ */
+const STATUS = SUPPORT_PLAIN;
 
 function excerptsById(record: Case): Map<string, Excerpt & { documentName: string }> {
   const map = new Map<string, Excerpt & { documentName: string }>();
@@ -72,7 +55,9 @@ function Quote({ id, lookup, tone }: { id: string; lookup: ReturnType<typeof exc
 }
 
 function Row({ issue, record }: { issue: IssueAssessment; record: Case }) {
-  const [open, setOpen] = useState(issue.supportStatus !== 'supported');
+  // Everything starts closed. Opening the four non-green rows by default gave a
+  // wall of text on arrival, which is exactly what this audience cannot use.
+  const [open, setOpen] = useState(false);
   const lookup = excerptsById(record);
   const status = STATUS[issue.supportStatus];
   const facts = record.facts.filter((f) => issue.factIds.includes(f.id));
@@ -86,21 +71,26 @@ function Row({ issue, record }: { issue: IssueAssessment; record: Case }) {
         style={{ width: '100%', background: 'none', border: 0, padding: 0, cursor: 'pointer', textAlign: 'left' }}
       >
         <div className="row-start" style={{ gap: 10 }}>
-          {open ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-          <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{issue.title}</h2>
+          {open ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+          <h2 style={{ margin: 0, fontSize: '1.15rem' }}>{issue.title}</h2>
         </div>
-        <Badge label={status.label} tone={status.tone} />
+        <Badge label={status.headline} tone={status.tone} />
       </button>
 
-      <p className="muted" style={{ margin: '12px 0 0', lineHeight: 1.55 }}>{issue.reason}</p>
+      <p style={{ margin: '12px 0 0', lineHeight: 1.65, fontSize: '1.05rem' }}>{issue.reason}</p>
+      {!open && (
+        <button className="guide-secondary" style={{ marginTop: 14 }} onClick={() => setOpen(true)}>
+          Show me why
+        </button>
+      )}
 
       {open && (
         <div className="stack" style={{ marginTop: 18 }}>
-          <p className="small muted" style={{ margin: 0 }}>{status.meaning}</p>
+          <p style={{ margin: 0, lineHeight: 1.6 }}>{status.meaning}</p>
 
           {facts.length > 0 && (
             <div>
-              <h3 className="eyebrow">What this rests on</h3>
+              <h3 className="eyebrow">What this is based on</h3>
               <ul className="stack" style={{ margin: '6px 0 0', paddingLeft: 18 }}>
                 {facts.map((f) => (
                   <li key={f.id} style={{ lineHeight: 1.5 }}>
@@ -115,7 +105,7 @@ function Row({ issue, record }: { issue: IssueAssessment; record: Case }) {
           )}
 
           <div>
-            <h3 className="eyebrow">Supporting material</h3>
+            <h3 className="eyebrow">What backs it up</h3>
             {issue.supportingExcerptIds.length === 0 ? (
               <p className="small muted" style={{ margin: '6px 0 0' }}>
                 None found in your files.
@@ -132,7 +122,7 @@ function Row({ issue, record }: { issue: IssueAssessment; record: Case }) {
           {issue.conflictingExcerptIds.length > 0 && (
             <div>
               <h3 className="eyebrow" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <AlertTriangle size={14} /> Material that points the other way
+                <AlertTriangle size={14} /> What points the other way
               </h3>
               <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0 0' }}>
                 {issue.conflictingExcerptIds.map((id) => (
@@ -143,7 +133,7 @@ function Row({ issue, record }: { issue: IssueAssessment; record: Case }) {
           )}
 
           <div>
-            <h3 className="eyebrow">What the other side might say</h3>
+            <h3 className="eyebrow">What they might say back</h3>
             <p className="small muted" style={{ margin: '6px 0 0', lineHeight: 1.55 }}>
               {issue.contraryExplanation}
             </p>
@@ -151,7 +141,7 @@ function Row({ issue, record }: { issue: IssueAssessment; record: Case }) {
 
           {issue.nextQuestion && (
             <div className="callout callout-info">
-              <span><strong>Next useful question.</strong> {issue.nextQuestion}</span>
+              <span style={{ fontSize: '1.05rem' }}><strong>Worth finding out.</strong> {issue.nextQuestion}</span>
             </div>
           )}
         </div>
@@ -174,15 +164,12 @@ function EvidencePage() {
       <PageHeader
         eyebrow="Stage 4"
         title="Review what your evidence shows"
-        description="Each point below is checked against your files, one at a time."
+        description="For each part of your claim, we looked for something in your files that backs it up."
       />
 
       <div className="callout" style={{ marginBottom: 20 }}>
         <AlertTriangle size={19} />
-        <span>
-          These describe how well each point is supported by your documents. They are not a score,
-          a strength rating, or a prediction of what a tribunal would decide.
-        </span>
+        <span style={{ fontSize: '1.05rem', lineHeight: 1.6 }}>{NOT_A_SCORE}</span>
       </div>
 
       <div className="split">
@@ -197,7 +184,7 @@ function EvidencePage() {
           <div className="metric-list" style={{ marginTop: 10 }}>
             {(['supported', 'partial_or_disputed', 'missing', 'not_assessed'] as const).map((k) => (
               <div className="metric" key={k}>
-                <span>{STATUS[k].label}</span>
+                <span>{STATUS[k].headline}</span>
                 <strong>{counts[k] ?? 0}</strong>
               </div>
             ))}

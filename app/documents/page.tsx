@@ -5,19 +5,11 @@ import { useCase } from '@/components/case-provider';
 import { ViewState } from '@/components/view-state';
 import { Badge, Button, PageHeader } from '@/components/ui';
 import type { Document, DocumentIssue } from '@/lib/contracts';
-import { DOCUMENT_ISSUE_LABEL, SUPPORTED_EXTENSIONS, UPLOAD_LIMITS } from '@/lib/contracts';
+import { SUPPORTED_EXTENSIONS, UPLOAD_LIMITS } from '@/lib/contracts';
+import { FILE_PLAIN } from '@/lib/plain-language';
 
-/** What each flag means for the user, and what they can do about it. */
-const ISSUE_ADVICE: Record<DocumentIssue, string> = {
-  unreadable: 'We could not read any of it. If you have another copy, upload that.',
-  password_protected: 'Remove the password and upload it again.',
-  truncated: `We read the first ${UPLOAD_LIMITS.maxPagesPerCase} pages. The rest was not read.`,
-  unsupported_type: 'We did not read this file. Save it as PDF, DOCX, JPG, PNG or TXT.',
-  possibly_unrelated: 'This may not relate to your dispute. Keep it or remove it — your call.',
-  low_quality_scan: 'The text was hard to make out, so anything read from it may be wrong. Check it against the original.',
-  duplicate: 'You already uploaded this file. A second copy does not add support.',
-  over_size_limit: `Files must be under ${UPLOAD_LIMITS.maxBytesPerFile / (1024 * 1024)} MB.`,
-};
+/** Wording lives in lib/plain-language so every surface says the same thing. */
+const ISSUE_ADVICE = FILE_PLAIN;
 
 const tone = (d: Document) =>
   d.processingStatus === 'failed' ? 'bad' : d.issues.length > 0 ? 'warn' : 'good';
@@ -98,8 +90,8 @@ function DocumentsPage() {
     <>
       <PageHeader
         eyebrow="Stage 2"
-        title="Add your documents"
-        description="Upload them in any order. You do not need to sort them or work out which ones matter."
+        title="Add anything you have"
+        description="Receipts, photos, screenshots of messages. Any order — you do not need to sort them."
         action={<Badge label={`${documents.length} of ${UPLOAD_LIMITS.maxFilesPerCase}`} tone="neutral" />}
       />
 
@@ -113,7 +105,7 @@ function DocumentsPage() {
             style={{ borderStyle: 'dashed', borderWidth: 2, background: dragging ? 'var(--surface-2, rgba(0,0,0,0.03))' : undefined }}
           >
             <Upload size={26} />
-            <strong>Drop files here</strong>
+            <strong style={{fontSize:'1.15rem'}}>Drag files here, or choose them</strong>
             <p className="small muted">
               {SUPPORTED_EXTENSIONS.map((e) => `.${e}`).join(', ')} · up to{' '}
               {UPLOAD_LIMITS.maxBytesPerFile / (1024 * 1024)} MB each
@@ -164,7 +156,7 @@ function DocumentsPage() {
                           tone={tone(doc)}
                         />
                         {doc.issues.map((i) => (
-                          <Badge key={i} label={DOCUMENT_ISSUE_LABEL[i]} tone="warn" />
+                          <Badge key={i} label={ISSUE_ADVICE[i].headline} tone="warn" />
                         ))}
                       </div>
                       <div className="small muted" style={{ marginTop: 6 }}>
@@ -178,7 +170,7 @@ function DocumentsPage() {
                       )}
                       {doc.issues.map((i) => (
                         <p key={i} className="small muted" style={{ margin: '6px 0 0', lineHeight: 1.5 }}>
-                          {ISSUE_ADVICE[i]}
+                          {ISSUE_ADVICE[i].advice}
                         </p>
                       ))}
                     </div>
