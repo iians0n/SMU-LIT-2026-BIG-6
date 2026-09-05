@@ -1,4 +1,4 @@
-import type { Case, Contradiction, Draft, DraftField, SourceRef } from '@/lib/contracts';
+import type { Case, Contradiction, Draft, DraftField, SourceRef } from '@/lib/dashboard/contracts';
 export function sourceValue(c:Case,ref:SourceRef|null):string|null {
  if(!ref)return null;
  if(ref.kind==='fact'){const f=c.facts.find(f=>f.id===ref.id);return f&&f.confirmedByUser&&!f.unknown&&f.value!==null?String(f.value):null;}

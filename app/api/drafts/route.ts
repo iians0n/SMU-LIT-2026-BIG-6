@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SourceRefSchema } from '@/lib/contracts';
+import { SourceRefSchema } from '@/lib/dashboard/contracts';
 import { api,requireCase,checkVersion,ApiError } from '@/lib/server/session';
 import { getWorkflow,appendVerification } from '@/lib/workflow';
 import { assembleDraft,renderDraft,validateEdit,isRenderable } from '@/lib/drafting';

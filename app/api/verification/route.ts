@@ -1,4 +1,4 @@
-import { VerificationInputSchema } from '@/lib/contracts';
+import { VerificationInputSchema } from '@/lib/dashboard/contracts';
 import { api,requireCase,checkVersion,ApiError } from '@/lib/server/session';
 import { appendVerification,getWorkflow } from '@/lib/workflow';
 import { sourceValue } from '@/lib/drafting';

@@ -1,0 +1,719 @@
+/**
+ * The demo case: a customer seeking a refund for incomplete repair work.
+ * PRD §5 illustrative dispute, §10 demonstration narrative.
+ *
+ * TYPED SOURCE OF TRUTH. `fixtures/case.demo.json` is generated from this by
+ * `npm run fixtures` — write here, never edit the JSON by hand. Being TS means
+ * the compiler catches a fixture that has drifted from lib/contracts, which is
+ * the whole point: a silently-invalid fixture would waste both of us a day.
+ *
+ * Entirely fictional. Names, amounts, and documents are synthetic (PRD §8).
+ */
+
+import { sgd, type CaseRecord } from "@/lib/contracts";
+
+const V = 3; // the case version this fixture was built at
+
+export const demoCase: CaseRecord = {
+  case: {
+    id: "case_demo_001",
+    version: V,
+    ownerId: "user_demo",
+    stage: "review_support",
+    stageStatus: {
+      explain: "reviewed",
+      clarify_upload: "in_progress",
+      confirm: "needs_review",
+      review_support: "in_progress",
+      choose_step: "not_started",
+      prepare_handoff: "not_started",
+    },
+    claimCategory: "services",
+    requestedOutcome:
+      "I want the S$2,000 back, and the S$500 I had to spend getting someone else to finish it.",
+    createdAt: "2026-08-28T09:12:00Z",
+    updatedAt: "2026-09-04T14:41:00Z",
+  },
+
+  parties: [
+    {
+      id: "p_claimant",
+      role: "claimant",
+      name: "Tan Wei Ling",
+      kind: "individual",
+      acraProfileNeeded: false,
+      inSingapore: true,
+      notes: null,
+    },
+    {
+      id: "p_respondent",
+      role: "respondent",
+      name: "Precision Home Repairs Pte Ltd",
+      kind: "business",
+      // Business respondent -> a recent ACRA profile is a conditional CJTS document (S3).
+      acraProfileNeeded: true,
+      inSingapore: true,
+      notes: "Name taken from the quote letterhead. Not yet verified against ACRA.",
+    },
+  ],
+
+  // ---------------------------------------------------------------- Anson's
+  documents: [
+    {
+      id: "d1",
+      fileName: "quote-accepted.pdf",
+      extension: "pdf",
+      byteSize: 3101,
+      hash: "sha256:bc094b62fd30ef6e",
+      uploadedAt: "2026-08-28T09:20:00Z",
+      processingStatus: "extracted",
+      issues: [],
+      proposedLabel: "Quote",
+      userLabel: "Accepted quote",
+      pageCount: 2,
+      failureReason: null,
+    },
+    {
+      id: "d2",
+      fileName: "receipt.jpg",
+      extension: "jpg",
+      byteSize: 72750,
+      hash: "sha256:d12c06d858c3a9d7",
+      uploadedAt: "2026-08-28T09:21:00Z",
+      processingStatus: "extracted",
+      issues: [],
+      proposedLabel: "Receipt",
+      userLabel: null,
+      pageCount: 1,
+      failureReason: null,
+    },
+    {
+      id: "d3",
+      fileName: "whatsapp-thread.png",
+      extension: "png",
+      byteSize: 62891,
+      hash: "sha256:29cdb640cc823a92",
+      uploadedAt: "2026-08-28T09:23:00Z",
+      processingStatus: "extracted",
+      issues: [],
+      proposedLabel: "Chat messages",
+      userLabel: "WhatsApp with contractor",
+      pageCount: 1,
+      failureReason: null,
+    },
+    {
+      id: "d4",
+      fileName: "receipt-photo-2.jpg",
+      extension: "jpg",
+      byteSize: 72750,
+      hash: "sha256:d12c06d858c3a9d7", // same hash as d2 -> duplicate
+      uploadedAt: "2026-08-28T09:24:00Z",
+      processingStatus: "extracted",
+      // Duplicate evidence must not improve support (FR05).
+      issues: ["duplicate"],
+      proposedLabel: "Receipt",
+      userLabel: null,
+      pageCount: 1,
+      failureReason: null,
+    },
+    {
+      id: "d5",
+      fileName: "handwritten-note.jpg",
+      extension: "jpg",
+      byteSize: 21978,
+      hash: "sha256:01b59daa8fc9d757",
+      uploadedAt: "2026-08-28T09:26:00Z",
+      processingStatus: "extracted",
+      // A blurry scan flags uncertainty. It does NOT produce invented text (FR03).
+      issues: ["low_quality_scan"],
+      proposedLabel: null,
+      userLabel: null,
+      pageCount: 1,
+      failureReason: null,
+    },
+    {
+      id: "d6",
+      fileName: "bank-statement.pdf",
+      extension: "pdf",
+      byteSize: 2679,
+      hash: "sha256:c14237d336ccd74e",
+      uploadedAt: "2026-08-28T09:27:00Z",
+      processingStatus: "failed",
+      issues: ["password_protected"],
+      proposedLabel: null,
+      userLabel: null,
+      pageCount: null,
+      failureReason:
+        "This PDF is password protected, so we could not open it. You can remove the password and upload it again.",
+    },
+    {
+      id: "d7",
+      fileName: "contract-draft.rtf",
+      extension: "rtf",
+      byteSize: 337,
+      hash: "sha256:837b5209cdffaaba",
+      uploadedAt: "2026-08-28T09:28:00Z",
+      processingStatus: "failed",
+      // Visibly unsupported. The UI must never imply this file was read.
+      issues: ["unsupported_type"],
+      proposedLabel: null,
+      userLabel: null,
+      pageCount: null,
+      failureReason:
+        "We do not read .rtf files. Save it as PDF or DOCX and upload it again.",
+    },
+  ],
+
+  excerpts: [
+    {
+      id: "e1",
+      documentId: "d1",
+      anchor: { kind: "region", page: 1, bbox: { x: 0.08, y: 0.31, w: 0.84, h: 0.09 } },
+      text: "Full bathroom waterproofing and re-tiling — total S$2,000 (inclusive of materials).",
+      extractionConfidence: 0.97,
+    },
+    {
+      id: "e2",
+      documentId: "d1",
+      anchor: { kind: "region", page: 1, bbox: { x: 0.08, y: 0.52, w: 0.6, h: 0.05 } },
+      text: "Works to be completed by 15 July 2026.",
+      extractionConfidence: 0.96,
+    },
+    {
+      id: "e3",
+      documentId: "d2",
+      anchor: { kind: "region", page: 1, bbox: { x: 0.12, y: 0.44, w: 0.7, h: 0.12 } },
+      text: "Received with thanks S$2,000.00 from Tan Wei Ling. 20 June 2026.",
+      extractionConfidence: 0.93,
+    },
+    {
+      id: "e4",
+      documentId: "d3",
+      anchor: { kind: "region", page: 1, bbox: { x: 0.05, y: 0.62, w: 0.9, h: 0.08 } },
+      // The contradiction. This is the amber row the whole demo turns on.
+      text:
+        "[12 Jul] Sorry ah, supplier delay on the tiles. Can we push to end of the month? Will finish by 29 Jul.",
+      extractionConfidence: 0.89,
+    },
+    {
+      id: "e5",
+      documentId: "d3",
+      anchor: { kind: "region", page: 1, bbox: { x: 0.05, y: 0.71, w: 0.9, h: 0.06 } },
+      text: "[12 Jul] ok",
+      // Low confidence AND ambiguous meaning — two separate problems.
+      extractionConfidence: 0.71,
+    },
+    {
+      id: "e6",
+      documentId: "d5",
+      anchor: { kind: "page", page: 1 },
+      text: "[unreadable]",
+      extractionConfidence: 0.22,
+    },
+  ],
+
+  facts: [
+    {
+      id: "f1",
+      kind: "agreement",
+      statement:
+        "Precision Home Repairs quoted S$2,000 for bathroom waterproofing and re-tiling, and Tan Wei Ling accepted.",
+      amount: sgd(2000),
+      origin: "document_extracted",
+      confirmedByUser: true,
+      disputed: false,
+      unknown: false,
+      excerptIds: ["e1"],
+      lastChangedAtVersion: 1,
+      updatedAt: "2026-08-28T10:02:00Z",
+    },
+    {
+      id: "f2",
+      kind: "payment",
+      statement: "Tan Wei Ling paid S$2,000 on 20 June 2026.",
+      amount: sgd(2000),
+      date: { value: "2026-06-20", precision: "exact" },
+      origin: "document_extracted",
+      confirmedByUser: true,
+      disputed: false,
+      unknown: false,
+      excerptIds: ["e3"],
+      lastChangedAtVersion: 1,
+      updatedAt: "2026-08-28T10:03:00Z",
+    },
+    {
+      id: "f3",
+      kind: "promised_performance",
+      statement: "The work was to be completed by 15 July 2026.",
+      date: { value: "2026-07-15", precision: "exact" },
+      origin: "document_extracted",
+      // Confirmed by the user AND disputed by the record. Both true at once —
+      // this is why FR04 requires coexisting statuses rather than an enum.
+      confirmedByUser: true,
+      disputed: true,
+      unknown: false,
+      excerptIds: ["e2"],
+      lastChangedAtVersion: 2,
+      updatedAt: "2026-09-02T11:20:00Z",
+    },
+    {
+      id: "f4",
+      kind: "event",
+      statement:
+        "On 12 July the contractor asked to move the completion date to 29 July. Whether Tan Wei Ling agreed is not established.",
+      date: { value: "2026-07-12", precision: "exact" },
+      origin: "document_extracted",
+      confirmedByUser: false,
+      disputed: false,
+      unknown: true,
+      excerptIds: ["e4", "e5"],
+      lastChangedAtVersion: 3,
+      updatedAt: "2026-09-04T14:41:00Z",
+    },
+    {
+      id: "f5",
+      kind: "event",
+      statement: "As at 28 August 2026 the re-tiling was not finished.",
+      date: { value: "2026-08", precision: "month" },
+      origin: "user_stated",
+      confirmedByUser: true,
+      disputed: false,
+      unknown: false,
+      // No excerpt. User-stated and confirmed is still not corroboration.
+      excerptIds: [],
+      lastChangedAtVersion: 1,
+      updatedAt: "2026-08-28T10:11:00Z",
+    },
+    {
+      id: "f6",
+      kind: "loss",
+      statement:
+        "Tan Wei Ling says she paid another contractor about S$500 to finish the work.",
+      amount: sgd(500),
+      date: { value: "2026-08", precision: "approximate", note: "sometime in August" },
+      origin: "user_stated",
+      confirmedByUser: true,
+      disputed: false,
+      unknown: false,
+      excerptIds: [],
+      lastChangedAtVersion: 2,
+      updatedAt: "2026-09-02T11:25:00Z",
+    },
+    {
+      id: "f7",
+      kind: "desired_outcome",
+      statement: "Refund of S$2,000 plus S$500 for the additional work.",
+      amount: sgd(2500),
+      origin: "user_stated",
+      confirmedByUser: true,
+      disputed: false,
+      unknown: false,
+      excerptIds: [],
+      lastChangedAtVersion: 1,
+      updatedAt: "2026-08-28T10:14:00Z",
+    },
+  ],
+
+  openQuestions: [
+    {
+      id: "q1",
+      topic: "events",
+      // Neutral. Does not suggest the answer that helps the claimant (FR02).
+      question:
+        "On 12 July the contractor asked to move the date to 29 July. What did you reply?",
+      whyItMatters:
+        "If a later date was agreed, the deadline that matters changes. If it was not, the original 15 July date stands. Right now the record does not show which happened.",
+      status: "open",
+      answeredFactId: null,
+      askedAt: "2026-09-04T14:38:00Z",
+    },
+    {
+      id: "q2",
+      topic: "loss",
+      question:
+        "What did the S$500 pay for, and do you have an invoice, receipt, or bank record for it?",
+      whyItMatters:
+        "Right now this amount rests on your account alone. A record would let you show what was spent and why.",
+      status: "open",
+      answeredFactId: null,
+      askedAt: "2026-09-04T14:39:00Z",
+    },
+    {
+      id: "q3",
+      topic: "attempted_resolution",
+      question: "Have you asked the contractor for a refund, and what did they say?",
+      whyItMatters:
+        "The tribunal process expects parties to have tried to resolve things. It also affects which next steps make sense for you.",
+      status: "answered",
+      answeredFactId: "f5",
+      askedAt: "2026-09-02T11:18:00Z",
+    },
+    {
+      id: "q4",
+      topic: "other_party_response",
+      question: "Has the contractor given a reason for the delay beyond the tile supplier?",
+      whyItMatters:
+        "Understanding their account helps you prepare for what they may say, rather than being surprised by it.",
+      status: "dont_know",
+      answeredFactId: null,
+      askedAt: "2026-09-02T11:19:00Z",
+    },
+  ],
+
+  issues: [
+    {
+      id: "ia1",
+      issueId: "agreement_and_terms",
+      checklistVersion: "goods-services-v1-draft",
+      label: "What was agreed, and on what terms",
+      factIds: ["f1"],
+      supportingExcerptIds: ["e1"],
+      conflictingExcerptIds: [],
+      supportStatus: "supported",
+      notAssessedReason: null,
+      reason:
+        "The accepted quote states the scope and the price, and nothing in the other material contradicts it.",
+      nextQuestion: "Is the business name on the quote the party you dealt with?",
+      contraryExplanations: [],
+      sourceCaseVersion: V,
+      assessedAt: "2026-09-04T14:41:00Z",
+    },
+    {
+      id: "ia2",
+      issueId: "your_performance",
+      checklistVersion: "goods-services-v1-draft",
+      label: "What you did under the agreement",
+      factIds: ["f2"],
+      // d4 is a duplicate of d2 and contributes nothing extra.
+      supportingExcerptIds: ["e3"],
+      conflictingExcerptIds: [],
+      supportStatus: "supported",
+      notAssessedReason: null,
+      reason: "A receipt records payment of the full quoted amount.",
+      nextQuestion: "Was the payment made to the company, or to someone personally?",
+      contraryExplanations: [
+        "The receipt does not say who issued it, so it does not by itself show the company received the money.",
+      ],
+      sourceCaseVersion: V,
+      assessedAt: "2026-09-04T14:41:00Z",
+    },
+    {
+      id: "ia3",
+      issueId: "their_performance",
+      checklistVersion: "goods-services-v1-draft",
+      label: "What the other side did, and by when",
+      factIds: ["f3", "f4", "f5"],
+      supportingExcerptIds: ["e2"],
+      // The heart of the demo. A contradictory chat prevents an unqualified green.
+      conflictingExcerptIds: ["e4", "e5"],
+      supportStatus: "partial_or_disputed",
+      notAssessedReason: null,
+      reason:
+        "The quote gives 15 July as the completion date, but a chat message on 12 July asks to move it to 29 July. The reply in the thread reads only 'ok', which we cannot safely take as agreement to the new date.",
+      nextQuestion: "What did you mean by 'ok' in the message on 12 July?",
+      contraryExplanations: [
+        "The contractor may say the date was extended by agreement on 12 July.",
+        "The contractor may say the delay was caused by their supplier and outside their control.",
+      ],
+      sourceCaseVersion: V,
+      assessedAt: "2026-09-04T14:41:00Z",
+    },
+    {
+      id: "ia4",
+      issueId: "alleged_failure",
+      checklistVersion: "goods-services-v1-draft",
+      label: "What went wrong",
+      factIds: ["f5"],
+      supportingExcerptIds: [],
+      conflictingExcerptIds: ["e4"],
+      supportStatus: "partial_or_disputed",
+      notAssessedReason: null,
+      reason:
+        "That the work is unfinished rests on your account. We found no photographs, inspection, or message confirming the state of the work.",
+      nextQuestion:
+        "Do you have photos of the unfinished bathroom, or a message where you told the contractor it was incomplete?",
+      contraryExplanations: [
+        "The contractor may say the work was substantially complete and only minor items remained.",
+      ],
+      sourceCaseVersion: V,
+      assessedAt: "2026-09-04T14:41:00Z",
+    },
+    {
+      id: "ia5",
+      issueId: "claimed_loss_and_remedy",
+      checklistVersion: "goods-services-v1-draft",
+      label: "What you lost, and what you are asking for",
+      factIds: ["f6", "f7"],
+      supportingExcerptIds: [],
+      conflictingExcerptIds: [],
+      // Red. No supporting material found — which is NOT a finding that the claim is false.
+      supportStatus: "missing",
+      notAssessedReason: null,
+      reason:
+        "We have not found any record of the S$500. This does not mean the expense did not happen — it means there is nothing in the uploaded files that shows it.",
+      nextQuestion: "Do you have an invoice, receipt, or bank record for the S$500?",
+      contraryExplanations: [],
+      sourceCaseVersion: V,
+      assessedAt: "2026-09-04T14:41:00Z",
+    },
+    {
+      id: "ia6",
+      issueId: "contrary_explanations",
+      checklistVersion: "goods-services-v1-draft",
+      label: "What the other side might say",
+      factIds: ["f4"],
+      supportingExcerptIds: [],
+      conflictingExcerptIds: [],
+      supportStatus: "not_assessed",
+      // Grey needs a reason. Three different situations, three different next steps.
+      notAssessedReason: "insufficient_information",
+      reason:
+        "We do not have the contractor's account. One document could not be opened, so there may be relevant material we have not seen.",
+      nextQuestion: "Can you remove the password from the bank statement and upload it again?",
+      contraryExplanations: [],
+      sourceCaseVersion: V,
+      assessedAt: "2026-09-04T14:41:00Z",
+    },
+  ],
+
+  contradictions: [
+    {
+      id: "ct1",
+      kind: "changed_terms",
+      description:
+        "The quote sets a completion date of 15 July 2026. A chat message on 12 July asks to move it to 29 July. It is not established whether that change was agreed.",
+      excerptIds: ["e2", "e4", "e5"],
+      factIds: ["f3", "f4"],
+      alternatives: [
+        {
+          reading: "The deadline stayed 15 July and the contractor missed it.",
+          distinguishingFact:
+            "What 'ok' referred to in the 12 July message — the delay itself, or the new date.",
+        },
+        {
+          reading: "The deadline was moved to 29 July by agreement.",
+          distinguishingFact:
+            "Any later message treating 29 July as the agreed date, from either side.",
+        },
+      ],
+      sourceCaseVersion: V,
+    },
+    {
+      id: "ct2",
+      kind: "adverse_document",
+      description:
+        "The chat records a supplier delay as the reason. That may support the contractor's account rather than yours.",
+      excerptIds: ["e4"],
+      factIds: ["f4"],
+      alternatives: [],
+      sourceCaseVersion: V,
+    },
+  ],
+
+  // ------------------------------------------------------------- Clarence's
+  // Seeded so every screen he owns has something to render on day one.
+  // He replaces the generation logic; the shapes stay.
+  sources: [
+    {
+      id: "src_s2",
+      sourceKey: "S2",
+      title: "Cases eligible for a small claim",
+      url: "https://www.judiciary.gov.sg/civil/cases-eligible-small-claim",
+      passage:
+        "PLACEHOLDER — Clarence replaces this with the retrieved passage at M1. The grounding gate (FR09) checks this text, not the URL.",
+      retrievedAt: "2026-09-05",
+      version: null,
+      lastReviewedAt: "2026-09-05",
+    },
+    {
+      id: "src_s3",
+      sourceKey: "S3",
+      title: "How to file and serve a small claim",
+      url: "https://www.judiciary.gov.sg/civil/how-to-file-serve-small-claim",
+      passage: "PLACEHOLDER — see src_s2.",
+      retrievedAt: "2026-09-05",
+      version: null,
+      lastReviewedAt: "2026-09-05",
+    },
+    {
+      id: "src_s4",
+      sourceKey: "S4",
+      title: "File a small claim",
+      url: "https://www.judiciary.gov.sg/civil/file-small-claim",
+      passage: "PLACEHOLDER — see src_s2.",
+      retrievedAt: "2026-09-05",
+      version: null,
+      lastReviewedAt: "2026-09-05",
+    },
+  ],
+
+  route: {
+    id: "rs1",
+    // Honest outcome for this record: the amount and category fit, but the date
+    // that starts the filing period is not pinned down. Uncertainty stays visible;
+    // we do not resolve it to make the rule fire (FR06).
+    outcome: "more_information_needed",
+    inputs: {
+      claimType: "Dispute about a service contract",
+      amount: sgd(2500),
+      causeOfActionDate: {
+        value: "2026-07",
+        precision: "month",
+        note: "Depends on whether the deadline was 15 July or 29 July",
+      },
+      respondentInSingapore: true,
+      bothPartiesConsent: null,
+      exceptionalCircumstances: [],
+    },
+    reasons: [
+      {
+        text: "The amount you are claiming is S$2,500.",
+        ruleId: "amount_within_standard_limit",
+        sourceIds: ["src_s2"],
+      },
+      {
+        text: "We could not establish the date the problem arose, because the completion date is unresolved.",
+        ruleId: "cause_of_action_date_required",
+        sourceIds: ["src_s2"],
+      },
+    ],
+    unresolvedInputs: ["Date the problem arose"],
+    rulesVersion: "sct-rules-v1-draft",
+    sourceCaseVersion: V,
+    screenedAt: "2026-09-04T14:42:00Z",
+  },
+
+  tasks: [
+    {
+      id: "t1",
+      title: "Find a record of the S$500",
+      purpose:
+        "This amount is part of what you are claiming, and nothing in your files currently shows it.",
+      sourceIds: [],
+      requiredMaterial: ["Invoice, receipt, or bank record from the second contractor"],
+      dependsOn: [],
+      status: "not_started",
+      sourceLimitation: null,
+      sourceCaseVersion: V,
+    },
+    {
+      id: "t2",
+      title: "Settle what the completion date was",
+      purpose:
+        "Your chronology and your draft both depend on it, and it is currently unresolved.",
+      sourceIds: [],
+      requiredMaterial: ["The full chat thread around 12 July"],
+      dependsOn: [],
+      status: "in_progress",
+      sourceLimitation: null,
+      sourceCaseVersion: V,
+    },
+    {
+      id: "t3",
+      title: "Complete the CJTS pre-filing assessment",
+      purpose: "Filing goes through CJTS, which issues an assessment ID you will need.",
+      sourceIds: ["src_s3"],
+      requiredMaterial: ["Singpass"],
+      dependsOn: ["t2"],
+      status: "blocked",
+      sourceLimitation:
+        "The passage for this step has not been retrieved yet — check the official page before relying on it.",
+      sourceCaseVersion: V,
+    },
+  ],
+
+  draftFields: [
+    {
+      id: "df1",
+      fieldKey: "respondent_name",
+      label: "Respondent name",
+      required: true,
+      state: "populated",
+      proposedValue: "Precision Home Repairs Pte Ltd",
+      sourceRefs: [{ kind: "excerpt", excerptId: "e1" }],
+      reviewed: false,
+      sourceCaseVersion: V,
+    },
+    {
+      id: "df2",
+      fieldKey: "claim_amount",
+      label: "Amount claimed",
+      required: true,
+      state: "populated",
+      proposedValue: "S$2,500.00",
+      sourceRefs: [
+        { kind: "fact", factId: "f2" },
+        { kind: "fact", factId: "f6" },
+      ],
+      reviewed: false,
+      sourceCaseVersion: V,
+    },
+    {
+      id: "df3",
+      fieldKey: "pre_filing_assessment_id",
+      label: "Pre-filing assessment ID",
+      required: true,
+      state: "blank",
+      // Never fabricated, under any circumstances (FR08).
+      missingReason:
+        "CJTS issues this after you complete the pre-filing assessment. This tool cannot generate it.",
+      sourceCaseVersion: V,
+    },
+    {
+      id: "df4",
+      fieldKey: "completion_date_agreed",
+      label: "Agreed completion date",
+      required: true,
+      state: "blank",
+      missingReason:
+        "Unresolved — the quote says 15 July and a chat message asks to move it to 29 July.",
+      sourceCaseVersion: V,
+    },
+  ],
+
+  verificationEvents: [
+    {
+      id: "ve1",
+      kind: "ai_extracted",
+      affectedOutput: "fact:f1",
+      usedFactIds: [],
+      usedSourceIds: [],
+      note: "Scope and price read from the accepted quote, page 1.",
+      at: "2026-08-28T10:02:00Z",
+      caseVersion: 1,
+    },
+    {
+      id: "ve2",
+      kind: "user_confirmed",
+      affectedOutput: "fact:f2",
+      usedFactIds: ["f2"],
+      usedSourceIds: [],
+      note: null,
+      at: "2026-08-28T10:31:00Z",
+      caseVersion: 1,
+    },
+    {
+      id: "ve3",
+      kind: "user_corrected",
+      affectedOutput: "fact:f6",
+      usedFactIds: ["f6"],
+      usedSourceIds: [],
+      note: "Amount corrected from S$50 to S$500 after review of the spoken account.",
+      at: "2026-09-02T11:25:00Z",
+      caseVersion: 2,
+    },
+    {
+      id: "ve4",
+      kind: "assertion_withheld",
+      affectedOutput: "issue:their_performance",
+      usedFactIds: ["f3", "f4"],
+      usedSourceIds: [],
+      note:
+        "Did not state that the contractor breached the deadline. The agreed date is unresolved, so the assertion has no support.",
+      at: "2026-09-04T14:41:00Z",
+      caseVersion: 3,
+    },
+  ],
+};
+
+export default demoCase;

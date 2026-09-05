@@ -1,5 +1,5 @@
 import data from '@/fixtures/sources/official.json';
-import type { Source, GroundedAssertion } from '@/lib/contracts';
+import type { Source, GroundedAssertion } from '@/lib/dashboard/contracts';
 export const sources:Source[]=data;
 // Curated paraphrases, checked against the linked official pages. These are not quotations.
 export const assertions:Record<string,GroundedAssertion> = {

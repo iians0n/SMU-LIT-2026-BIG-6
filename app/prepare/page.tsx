@@ -5,7 +5,7 @@ import { useCase } from '@/components/case-provider';
 import { GroundedNote } from '@/components/grounded-note';
 import { ViewState } from '@/components/view-state';
 import { Badge, Button, PageHeader } from '@/components/ui';
-import type { DraftField } from '@/lib/contracts';
+import type { DraftField } from '@/lib/dashboard/contracts';
 import { useState } from 'react';
 
 const sections:{id:DraftField['section'];title:string;description:string}[]=[

@@ -4,7 +4,7 @@ import { useCase } from '@/components/case-provider';
 import { GroundedNote } from '@/components/grounded-note';
 import { ViewState } from '@/components/view-state';
 import { Badge, Button, PageHeader } from '@/components/ui';
-import type { Option } from '@/lib/contracts';
+import type { Option } from '@/lib/dashboard/contracts';
 
 const choices:{id:Option;title:string;body:string;tradeoff:string}[]=[
  {id:'gather',title:'Gather more information',body:'Fill gaps and resolve conflicting dates before deciding.',tradeoff:'More certainty, but preparation takes longer.'},

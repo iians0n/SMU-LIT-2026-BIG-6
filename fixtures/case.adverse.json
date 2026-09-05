@@ -1,21 +1,21 @@
 {
   "case": {
-    "id": "case_demo_001",
-    "version": 3,
+    "id": "case_adverse_001",
+    "version": 7,
     "ownerId": "user_demo",
     "stage": "review_support",
     "stageStatus": {
       "explain": "reviewed",
-      "clarify_upload": "in_progress",
+      "clarify_upload": "reviewed",
       "confirm": "needs_review",
       "review_support": "in_progress",
       "choose_step": "not_started",
       "prepare_handoff": "not_started"
     },
     "claimCategory": "services",
-    "requestedOutcome": "I want the S$2,000 back, and the S$500 I had to spend getting someone else to finish it.",
+    "requestedOutcome": "The full S$2,500 back. It's obvious they didn't finish the job — I don't see what there is to discuss.",
     "createdAt": "2026-08-28T09:12:00Z",
-    "updatedAt": "2026-09-04T14:41:00Z"
+    "updatedAt": "2026-09-05T10:22:00Z"
   },
   "parties": [
     {
@@ -68,15 +68,15 @@
     },
     {
       "id": "d3",
-      "fileName": "whatsapp-thread.png",
+      "fileName": "whatsapp-thread-full.png",
       "extension": "png",
-      "byteSize": 62891,
-      "hash": "sha256:29cdb640cc823a92",
+      "byteSize": 95075,
+      "hash": "sha256:6edffd03370ae019",
       "uploadedAt": "2026-08-28T09:23:00Z",
       "processingStatus": "extracted",
       "issues": [],
       "proposedLabel": "Chat messages",
-      "userLabel": "WhatsApp with contractor",
+      "userLabel": "WhatsApp with contractor (full thread)",
       "pageCount": 1,
       "failureReason": null
     },
@@ -119,14 +119,12 @@
       "byteSize": 2679,
       "hash": "sha256:c14237d336ccd74e",
       "uploadedAt": "2026-08-28T09:27:00Z",
-      "processingStatus": "failed",
-      "issues": [
-        "password_protected"
-      ],
-      "proposedLabel": null,
+      "processingStatus": "extracted",
+      "issues": [],
+      "proposedLabel": "Bank statement",
       "userLabel": null,
-      "pageCount": null,
-      "failureReason": "This PDF is password protected, so we could not open it. You can remove the password and upload it again."
+      "pageCount": 1,
+      "failureReason": null
     },
     {
       "id": "d7",
@@ -143,6 +141,54 @@
       "userLabel": null,
       "pageCount": null,
       "failureReason": "We do not read .rtf files. Save it as PDF or DOCX and upload it again."
+    },
+    {
+      "id": "d8",
+      "fileName": "holiday-photo.jpg",
+      "extension": "jpg",
+      "byteSize": 23035,
+      "hash": "sha256:a7d7a48cc9b4e6c1",
+      "uploadedAt": "2026-09-05T09:40:00Z",
+      "processingStatus": "extracted",
+      "issues": [
+        "possibly_unrelated"
+      ],
+      "proposedLabel": null,
+      "userLabel": null,
+      "pageCount": 1,
+      "failureReason": null
+    },
+    {
+      "id": "d9",
+      "fileName": "corrupted-scan.pdf",
+      "extension": "pdf",
+      "byteSize": 875,
+      "hash": "sha256:7547af89768805d2",
+      "uploadedAt": "2026-09-05T09:41:00Z",
+      "processingStatus": "failed",
+      "issues": [
+        "unreadable"
+      ],
+      "proposedLabel": null,
+      "userLabel": null,
+      "pageCount": null,
+      "failureReason": "This file appears to be damaged and we could not read any of it. If you have another copy, try uploading that."
+    },
+    {
+      "id": "d10",
+      "fileName": "long-appendix.pdf",
+      "extension": "pdf",
+      "byteSize": 69206,
+      "hash": "sha256:df8f0b758b13618b",
+      "uploadedAt": "2026-09-05T09:43:00Z",
+      "processingStatus": "extracted",
+      "issues": [
+        "truncated"
+      ],
+      "proposedLabel": "Site photograph log",
+      "userLabel": null,
+      "pageCount": 120,
+      "failureReason": null
     }
   ],
   "excerpts": [
@@ -235,6 +281,128 @@
       },
       "text": "[unreadable]",
       "extractionConfidence": 0.22
+    },
+    {
+      "id": "e7",
+      "documentId": "d1",
+      "anchor": {
+        "kind": "region",
+        "page": 2,
+        "bbox": {
+          "x": 0.08,
+          "y": 0.28,
+          "w": 0.84,
+          "h": 0.04
+        }
+      },
+      "text": "4. Delays caused by material supply are not within the contractor's control.",
+      "extractionConfidence": 0.98
+    },
+    {
+      "id": "e8",
+      "documentId": "d1",
+      "anchor": {
+        "kind": "region",
+        "page": 2,
+        "bbox": {
+          "x": 0.08,
+          "y": 0.33,
+          "w": 0.84,
+          "h": 0.04
+        }
+      },
+      "text": "5. Any change to the agreed completion date is to be confirmed in writing.",
+      "extractionConfidence": 0.98
+    },
+    {
+      "id": "e9",
+      "documentId": "d6",
+      "anchor": {
+        "kind": "region",
+        "page": 1,
+        "bbox": {
+          "x": 0.08,
+          "y": 0.42,
+          "w": 0.84,
+          "h": 0.03
+        }
+      },
+      "text": "02 Jun   FAST TRANSFER  AH SENG   -300.00",
+      "extractionConfidence": 0.95
+    },
+    {
+      "id": "e10",
+      "documentId": "d6",
+      "anchor": {
+        "kind": "region",
+        "page": 1,
+        "bbox": {
+          "x": 0.08,
+          "y": 0.48,
+          "w": 0.84,
+          "h": 0.03
+        }
+      },
+      "text": "20 Aug   PAYNOW REFUND  PRECISION HOME REPAIRS   +400.00",
+      "extractionConfidence": 0.95
+    },
+    {
+      "id": "e11",
+      "documentId": "d6",
+      "anchor": {
+        "kind": "region",
+        "page": 1,
+        "bbox": {
+          "x": 0.08,
+          "y": 0.51,
+          "w": 0.84,
+          "h": 0.03
+        }
+      },
+      "text": "28 Aug   PAYNOW  KIM SENG RENOVATION   -500.00",
+      "extractionConfidence": 0.95
+    },
+    {
+      "id": "e12",
+      "documentId": "d3",
+      "anchor": {
+        "kind": "region",
+        "page": 1,
+        "bbox": {
+          "x": 0.05,
+          "y": 0.68,
+          "w": 0.9,
+          "h": 0.11
+        }
+      },
+      "text": "[18 Aug] Ms Tan, we can come back and finish the tiling at no extra charge. Waterproofing already done and the floor tiles are laid. Or we refund you part, up to you.",
+      "extractionConfidence": 0.9
+    },
+    {
+      "id": "e13",
+      "documentId": "d3",
+      "anchor": {
+        "kind": "region",
+        "page": 1,
+        "bbox": {
+          "x": 0.05,
+          "y": 0.86,
+          "w": 0.9,
+          "h": 0.05
+        }
+      },
+      "text": "[20 Aug] Ok. Refunded $400 today. Sorry again.",
+      "extractionConfidence": 0.91
+    },
+    {
+      "id": "e14",
+      "documentId": "d10",
+      "anchor": {
+        "kind": "page",
+        "page": 100
+      },
+      "text": "[Reading stopped at page 100 of 120. The remaining pages were not read.]",
+      "extractionConfidence": 1
     }
   ],
   "facts": [
@@ -325,48 +493,122 @@
       },
       "origin": "user_stated",
       "confirmedByUser": true,
-      "disputed": false,
+      "disputed": true,
       "unknown": false,
       "excerptIds": [],
-      "lastChangedAtVersion": 1,
+      "lastChangedAtVersion": 7,
       "updatedAt": "2026-08-28T10:11:00Z"
     },
     {
       "id": "f6",
       "kind": "loss",
-      "statement": "Tan Wei Ling says she paid another contractor about S$500 to finish the work.",
+      "statement": "Tan Wei Ling paid Kim Seng Renovation S$500 on 28 August 2026 to finish the work.",
       "amount": {
         "currencyCode": "SGD",
         "minorUnits": 50000
       },
       "date": {
-        "value": "2026-08",
-        "precision": "approximate",
-        "note": "sometime in August"
+        "value": "2026-08-28",
+        "precision": "exact"
       },
       "origin": "user_stated",
       "confirmedByUser": true,
       "disputed": false,
       "unknown": false,
-      "excerptIds": [],
-      "lastChangedAtVersion": 2,
+      "excerptIds": [
+        "e11"
+      ],
+      "lastChangedAtVersion": 7,
       "updatedAt": "2026-09-02T11:25:00Z"
     },
     {
       "id": "f7",
       "kind": "desired_outcome",
-      "statement": "Refund of S$2,000 plus S$500 for the additional work.",
+      "statement": "Refund of S$2,500. This does not account for the S$400 already refunded, or the S$300 cash paid on 2 June.",
       "amount": {
         "currencyCode": "SGD",
         "minorUnits": 250000
       },
       "origin": "user_stated",
       "confirmedByUser": true,
-      "disputed": false,
+      "disputed": true,
       "unknown": false,
       "excerptIds": [],
-      "lastChangedAtVersion": 1,
+      "lastChangedAtVersion": 7,
       "updatedAt": "2026-08-28T10:14:00Z"
+    },
+    {
+      "id": "f8",
+      "kind": "payment",
+      "statement": "Tan Wei Ling paid S$300 in cash to Ah Seng on 2 June 2026.",
+      "amount": {
+        "currencyCode": "SGD",
+        "minorUnits": 30000
+      },
+      "date": {
+        "value": "2026-06-02",
+        "precision": "exact"
+      },
+      "origin": "document_extracted",
+      "confirmedByUser": false,
+      "disputed": false,
+      "unknown": false,
+      "excerptIds": [
+        "e9"
+      ],
+      "lastChangedAtVersion": 7,
+      "updatedAt": "2026-09-05T10:05:00Z"
+    },
+    {
+      "id": "f9",
+      "kind": "promised_performance",
+      "statement": "The contractor says the waterproofing was completed and the floor tiles laid, with the wall tiling outstanding.",
+      "origin": "document_extracted",
+      "confirmedByUser": false,
+      "disputed": false,
+      "unknown": false,
+      "excerptIds": [
+        "e12"
+      ],
+      "lastChangedAtVersion": 7,
+      "updatedAt": "2026-09-05T10:06:00Z"
+    },
+    {
+      "id": "f10",
+      "kind": "attempted_resolution",
+      "statement": "The contractor refunded S$400 on 20 August 2026.",
+      "amount": {
+        "currencyCode": "SGD",
+        "minorUnits": 40000
+      },
+      "date": {
+        "value": "2026-08-20",
+        "precision": "exact"
+      },
+      "origin": "document_extracted",
+      "confirmedByUser": false,
+      "disputed": false,
+      "unknown": false,
+      "excerptIds": [
+        "e10",
+        "e13"
+      ],
+      "lastChangedAtVersion": 7,
+      "updatedAt": "2026-09-05T10:07:00Z"
+    },
+    {
+      "id": "f11",
+      "kind": "attempted_resolution",
+      "statement": "On 18 August the contractor offered to complete the tiling at no extra charge, or to refund part of the price.",
+      "origin": "document_extracted",
+      "confirmedByUser": false,
+      "disputed": false,
+      "unknown": false,
+      "excerptIds": [
+        "e12"
+      ],
+      "lastChangedAtVersion": 7,
+      "updatedAt": "2026-09-05T10:08:00Z"
     }
   ],
   "openQuestions": [
@@ -425,8 +667,8 @@
       "reason": "The accepted quote states the scope and the price, and nothing in the other material contradicts it.",
       "nextQuestion": "Is the business name on the quote the party you dealt with?",
       "contraryExplanations": [],
-      "sourceCaseVersion": 3,
-      "assessedAt": "2026-09-04T14:41:00Z"
+      "sourceCaseVersion": 7,
+      "assessedAt": "2026-09-05T10:22:00Z"
     },
     {
       "id": "ia2",
@@ -434,21 +676,23 @@
       "checklistVersion": "goods-services-v1-draft",
       "label": "What you did under the agreement",
       "factIds": [
-        "f2"
+        "f2",
+        "f8"
       ],
       "supportingExcerptIds": [
-        "e3"
+        "e3",
+        "e9"
       ],
       "conflictingExcerptIds": [],
-      "supportStatus": "supported",
+      "supportStatus": "partial_or_disputed",
       "notAssessedReason": null,
-      "reason": "A receipt records payment of the full quoted amount.",
-      "nextQuestion": "Was the payment made to the company, or to someone personally?",
+      "reason": "The receipt shows S$2,000, and the bank statement shows a further S$300 paid in cash on 2 June. The total paid appears to be S$2,300, which does not match the amount in your account of what happened.",
+      "nextQuestion": "Was the S$300 on 2 June part of this job, or something separate?",
       "contraryExplanations": [
-        "The receipt does not say who issued it, so it does not by itself show the company received the money."
+        "The S$300 may have been for a different job, in which case it does not belong in this claim."
       ],
-      "sourceCaseVersion": 3,
-      "assessedAt": "2026-09-04T14:41:00Z"
+      "sourceCaseVersion": 7,
+      "assessedAt": "2026-09-05T10:22:00Z"
     },
     {
       "id": "ia3",
@@ -458,25 +702,30 @@
       "factIds": [
         "f3",
         "f4",
-        "f5"
+        "f5",
+        "f9"
       ],
       "supportingExcerptIds": [
-        "e2"
+        "e2",
+        "e8"
       ],
       "conflictingExcerptIds": [
         "e4",
-        "e5"
+        "e5",
+        "e7",
+        "e12"
       ],
       "supportStatus": "partial_or_disputed",
       "notAssessedReason": null,
-      "reason": "The quote gives 15 July as the completion date, but a chat message on 12 July asks to move it to 29 July. The reply in the thread reads only 'ok', which we cannot safely take as agreement to the new date.",
-      "nextQuestion": "What did you mean by 'ok' in the message on 12 July?",
+      "reason": "The quote gives 15 July, and clause 5 requires any change to be confirmed in writing — which does not appear to have happened. But clause 4 of the same quote says supply delays are outside the contractor's control, and on 18 August the contractor said the waterproofing and floor tiling were done.",
+      "nextQuestion": "Which parts of the bathroom were finished when you brought in the second contractor?",
       "contraryExplanations": [
-        "The contractor may say the date was extended by agreement on 12 July.",
-        "The contractor may say the delay was caused by their supplier and outside their control."
+        "The contractor may rely on clause 4 of their own quote, which you uploaded, to say the tile delay was not their fault.",
+        "The contractor may say the work was substantially complete and only the wall tiling remained.",
+        "The contractor may say your 'ok' on 12 July agreed the new date."
       ],
-      "sourceCaseVersion": 3,
-      "assessedAt": "2026-09-04T14:41:00Z"
+      "sourceCaseVersion": 7,
+      "assessedAt": "2026-09-05T10:22:00Z"
     },
     {
       "id": "ia4",
@@ -484,21 +733,23 @@
       "checklistVersion": "goods-services-v1-draft",
       "label": "What went wrong",
       "factIds": [
-        "f5"
+        "f5",
+        "f9"
       ],
       "supportingExcerptIds": [],
       "conflictingExcerptIds": [
-        "e4"
+        "e4",
+        "e12"
       ],
       "supportStatus": "partial_or_disputed",
       "notAssessedReason": null,
-      "reason": "That the work is unfinished rests on your account. We found no photographs, inspection, or message confirming the state of the work.",
+      "reason": "That the work was unfinished rests on your account, and the contractor's message of 18 August describes it differently. We found no photographs or inspection recording the state of the bathroom.",
       "nextQuestion": "Do you have photos of the unfinished bathroom, or a message where you told the contractor it was incomplete?",
       "contraryExplanations": [
         "The contractor may say the work was substantially complete and only minor items remained."
       ],
-      "sourceCaseVersion": 3,
-      "assessedAt": "2026-09-04T14:41:00Z"
+      "sourceCaseVersion": 7,
+      "assessedAt": "2026-09-05T10:22:00Z"
     },
     {
       "id": "ia5",
@@ -507,17 +758,26 @@
       "label": "What you lost, and what you are asking for",
       "factIds": [
         "f6",
-        "f7"
+        "f7",
+        "f10"
       ],
-      "supportingExcerptIds": [],
-      "conflictingExcerptIds": [],
-      "supportStatus": "missing",
+      "supportingExcerptIds": [
+        "e11"
+      ],
+      "conflictingExcerptIds": [
+        "e10",
+        "e13"
+      ],
+      "supportStatus": "partial_or_disputed",
       "notAssessedReason": null,
-      "reason": "We have not found any record of the S$500. This does not mean the expense did not happen — it means there is nothing in the uploaded files that shows it.",
-      "nextQuestion": "Do you have an invoice, receipt, or bank record for the S$500?",
-      "contraryExplanations": [],
-      "sourceCaseVersion": 3,
-      "assessedAt": "2026-09-04T14:41:00Z"
+      "reason": "The S$500 to the second contractor is now supported by your bank statement. But the same statement shows S$400 refunded to you on 20 August, and the S$2,500 you are asking for does not account for it.",
+      "nextQuestion": "Do you want to claim S$2,500, or the amount you are actually out of pocket after the refund?",
+      "contraryExplanations": [
+        "The contractor will point to the S$400 refund as partial settlement.",
+        "The contractor may say the S$500 covered work beyond what they had quoted for."
+      ],
+      "sourceCaseVersion": 7,
+      "assessedAt": "2026-09-05T10:22:00Z"
     },
     {
       "id": "ia6",
@@ -525,17 +785,26 @@
       "checklistVersion": "goods-services-v1-draft",
       "label": "What the other side might say",
       "factIds": [
-        "f4"
+        "f9",
+        "f10",
+        "f11"
       ],
       "supportingExcerptIds": [],
-      "conflictingExcerptIds": [],
-      "supportStatus": "not_assessed",
-      "notAssessedReason": "insufficient_information",
-      "reason": "We do not have the contractor's account. One document could not be opened, so there may be relevant material we have not seen.",
-      "nextQuestion": "Can you remove the password from the bank statement and upload it again?",
-      "contraryExplanations": [],
-      "sourceCaseVersion": 3,
-      "assessedAt": "2026-09-04T14:41:00Z"
+      "conflictingExcerptIds": [
+        "e7",
+        "e12",
+        "e13"
+      ],
+      "supportStatus": "partial_or_disputed",
+      "notAssessedReason": null,
+      "reason": "The record now contains several things the other side is likely to rely on: their own quote's clause about supply delays, an offer to finish at no charge, and a partial refund you accepted.",
+      "nextQuestion": "What did you say when they offered to finish the tiling for free?",
+      "contraryExplanations": [
+        "Refusing an offer to complete at no charge may be raised against you.",
+        "Accepting the S$400 refund may be characterised as partial settlement."
+      ],
+      "sourceCaseVersion": 7,
+      "assessedAt": "2026-09-05T10:22:00Z"
     }
   ],
   "contradictions": [
@@ -562,7 +831,7 @@
           "distinguishingFact": "Any later message treating 29 July as the agreed date, from either side."
         }
       ],
-      "sourceCaseVersion": 3
+      "sourceCaseVersion": 7
     },
     {
       "id": "ct2",
@@ -575,7 +844,91 @@
         "f4"
       ],
       "alternatives": [],
-      "sourceCaseVersion": 3
+      "sourceCaseVersion": 7
+    },
+    {
+      "id": "ct3",
+      "kind": "refund",
+      "description": "S$400 was refunded on 20 August. The amount being claimed does not deduct it.",
+      "excerptIds": [
+        "e10",
+        "e13"
+      ],
+      "factIds": [
+        "f7",
+        "f10"
+      ],
+      "alternatives": [],
+      "sourceCaseVersion": 7
+    },
+    {
+      "id": "ct4",
+      "kind": "partial_performance",
+      "description": "The contractor says the waterproofing and floor tiling were completed. The claim describes the work as not done.",
+      "excerptIds": [
+        "e12"
+      ],
+      "factIds": [
+        "f5",
+        "f9"
+      ],
+      "alternatives": [
+        {
+          "reading": "Nothing usable was completed.",
+          "distinguishingFact": "Photographs of the bathroom before the second contractor started."
+        },
+        {
+          "reading": "Most of the work was done and only the wall tiling remained.",
+          "distinguishingFact": "The second contractor's invoice, if it itemises what they did."
+        }
+      ],
+      "sourceCaseVersion": 7
+    },
+    {
+      "id": "ct5",
+      "kind": "inconsistent_amount",
+      "description": "S$2,000 by receipt plus S$300 in cash is S$2,300 paid; S$400 was refunded; S$500 went to the second contractor. None of these figures reconcile to the S$2,500 being claimed.",
+      "excerptIds": [
+        "e3",
+        "e9",
+        "e10",
+        "e11"
+      ],
+      "factIds": [
+        "f2",
+        "f6",
+        "f7",
+        "f8",
+        "f10"
+      ],
+      "alternatives": [],
+      "sourceCaseVersion": 7
+    },
+    {
+      "id": "ct6",
+      "kind": "settlement_attempt",
+      "description": "On 18 August the contractor offered to complete the work at no extra charge. The offer was declined.",
+      "excerptIds": [
+        "e12"
+      ],
+      "factIds": [
+        "f11"
+      ],
+      "alternatives": [],
+      "sourceCaseVersion": 7
+    },
+    {
+      "id": "ct7",
+      "kind": "adverse_document",
+      "description": "Clause 4 of the accepted quote says supply delays are outside the contractor's control. This document was uploaded by the claimant.",
+      "excerptIds": [
+        "e7"
+      ],
+      "factIds": [
+        "f3"
+      ],
+      "alternatives": [],
+      "sourceCaseVersion": 7
     }
   ],
   "sources": [
@@ -611,14 +964,11 @@
     }
   ],
   "route": {
-    "id": "rs1",
+    "id": "rs_adverse",
     "outcome": "more_information_needed",
     "inputs": {
       "claimType": "Dispute about a service contract",
-      "amount": {
-        "currencyCode": "SGD",
-        "minorUnits": 250000
-      },
+      "amount": null,
       "causeOfActionDate": {
         "value": "2026-07",
         "precision": "month",
@@ -630,8 +980,8 @@
     },
     "reasons": [
       {
-        "text": "The amount you are claiming is S$2,500.",
-        "ruleId": "amount_within_standard_limit",
+        "text": "We could not establish the amount you are claiming, because the payments and the refund do not reconcile.",
+        "ruleId": "amount_required",
         "sourceIds": [
           "src_s2"
         ]
@@ -645,11 +995,12 @@
       }
     ],
     "unresolvedInputs": [
+      "Amount claimed",
       "Date the problem arose"
     ],
     "rulesVersion": "sct-rules-v1-draft",
-    "sourceCaseVersion": 3,
-    "screenedAt": "2026-09-04T14:42:00Z"
+    "sourceCaseVersion": 7,
+    "screenedAt": "2026-09-05T10:22:00Z"
   },
   "tasks": [
     {
@@ -663,7 +1014,7 @@
       "dependsOn": [],
       "status": "not_started",
       "sourceLimitation": null,
-      "sourceCaseVersion": 3
+      "sourceCaseVersion": 7
     },
     {
       "id": "t2",
@@ -676,7 +1027,7 @@
       "dependsOn": [],
       "status": "in_progress",
       "sourceLimitation": null,
-      "sourceCaseVersion": 3
+      "sourceCaseVersion": 7
     },
     {
       "id": "t3",
@@ -693,7 +1044,20 @@
       ],
       "status": "blocked",
       "sourceLimitation": "The passage for this step has not been retrieved yet — check the official page before relying on it.",
-      "sourceCaseVersion": 3
+      "sourceCaseVersion": 7
+    },
+    {
+      "id": "t4",
+      "title": "Decide what amount you are actually claiming",
+      "purpose": "Your files show S$2,300 paid, S$400 refunded, and S$500 to another contractor. Until this is settled, the claim amount cannot be filled in.",
+      "sourceIds": [],
+      "requiredMaterial": [
+        "Your decision on whether the S$300 cash was part of this job"
+      ],
+      "dependsOn": [],
+      "status": "not_started",
+      "sourceLimitation": null,
+      "sourceCaseVersion": 7
     }
   ],
   "draftFields": [
@@ -711,27 +1075,16 @@
         }
       ],
       "reviewed": false,
-      "sourceCaseVersion": 3
+      "sourceCaseVersion": 7
     },
     {
       "id": "df2",
       "fieldKey": "claim_amount",
       "label": "Amount claimed",
       "required": true,
-      "state": "populated",
-      "proposedValue": "S$2,500.00",
-      "sourceRefs": [
-        {
-          "kind": "fact",
-          "factId": "f2"
-        },
-        {
-          "kind": "fact",
-          "factId": "f6"
-        }
-      ],
-      "reviewed": false,
-      "sourceCaseVersion": 3
+      "state": "blank",
+      "missingReason": "Unresolved — S$2,300 appears to have been paid, S$400 was refunded, and S$500 went to a second contractor. These do not reconcile to a single figure.",
+      "sourceCaseVersion": 7
     },
     {
       "id": "df3",
@@ -740,7 +1093,7 @@
       "required": true,
       "state": "blank",
       "missingReason": "CJTS issues this after you complete the pre-filing assessment. This tool cannot generate it.",
-      "sourceCaseVersion": 3
+      "sourceCaseVersion": 7
     },
     {
       "id": "df4",
@@ -749,7 +1102,7 @@
       "required": true,
       "state": "blank",
       "missingReason": "Unresolved — the quote says 15 July and a chat message asks to move it to 29 July.",
-      "sourceCaseVersion": 3
+      "sourceCaseVersion": 7
     }
   ],
   "verificationEvents": [
@@ -799,6 +1152,22 @@
       "note": "Did not state that the contractor breached the deadline. The agreed date is unresolved, so the assertion has no support.",
       "at": "2026-09-04T14:41:00Z",
       "caseVersion": 3
+    },
+    {
+      "id": "ve5",
+      "kind": "assertion_withheld",
+      "affectedOutput": "draftField:claim_amount",
+      "usedFactIds": [
+        "f2",
+        "f6",
+        "f7",
+        "f8",
+        "f10"
+      ],
+      "usedSourceIds": [],
+      "note": "Did not populate an amount. The user asked for S$2,500; the record does not support a single figure, and choosing one would be the tool deciding her claim for her.",
+      "at": "2026-09-05T10:22:00Z",
+      "caseVersion": 7
     }
   ]
 }

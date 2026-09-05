@@ -1,4 +1,4 @@
-import type { Case, RouteScreening } from '@/lib/contracts';
+import type { Case, RouteScreening } from '@/lib/dashboard/contracts';
 export const RULES_VERSION='sct.goods-services.2026-09-05.v1';
 export const RULES={limitCents:2000000,consentLimitCents:3000000,years:2};
 export function screenRoute(c:Case,now=new Date()):RouteScreening {

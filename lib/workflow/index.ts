@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import type { Case, Draft, Option, RouteScreening, Task, VerificationEvent } from '@/lib/contracts';
+import type { Case, Draft, Option, RouteScreening, Task, VerificationEvent } from '@/lib/dashboard/contracts';
 import { assembleDraft } from '@/lib/drafting';
 import { screenRoute } from '@/lib/rules/rules.v1';
+import { patchCase } from '@/lib/store';
 export interface Workflow { route:RouteScreening;tasks:Task[];draft:Draft;option:Option|null;verification:VerificationEvent[]; }
 export function createTasks(c:Case):Task[] {
  const task=(id:string,title:string,purpose:string,assertionId:string,requiredMaterial:string[],dependencies:string[]=[]):Task=>({id,title,purpose,assertionId,requiredMaterial,dependencies,status:'Not started',sourceCaseVersion:c.version});
@@ -17,6 +18,9 @@ export function getWorkflow(c:Case):Workflow {
  return workflows.get(c.ownerId)!;
 }
 export function appendVerification(c:Case,input:Omit<VerificationEvent,'id'|'caseId'|'actorId'|'timestamp'>) {
- const event:VerificationEvent={...input,id:randomUUID(),caseId:c.id,actorId:c.ownerId,timestamp:new Date().toISOString()};getWorkflow(c).verification.push(event);return event;
+ const event:VerificationEvent={...input,id:randomUUID(),caseId:c.id,actorId:c.ownerId,timestamp:new Date().toISOString()};
+ getWorkflow(c).verification.push(event);
+ patchCase(record=>record.verificationEvents.push({id:event.id,kind:input.action==='edited'?'user_corrected':input.aiDrafted?'ai_drafted':'user_reviewed',affectedOutput:input.fieldId?`draftField:${input.fieldId}`:`dashboard:${input.action}`,usedFactIds:input.sourceRefs.filter(r=>r.kind==='fact').map(r=>r.id),usedSourceIds:[],note:input.description,at:event.timestamp,caseVersion:c.version}));
+ return event;
 }
 export function clearWorkflow(owner:string){workflows.delete(owner);}
