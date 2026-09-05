@@ -60,6 +60,8 @@ export interface Party {
   kind: PartyKind;
   /** Drives the conditional ACRA profile in the CJTS checklist (S3). */
   acraProfileNeeded: boolean;
+  /** Needed on the claim form so the claim can be served. */
+  address: string | null;
   inSingapore: boolean | null;
   notes: string | null;
 }

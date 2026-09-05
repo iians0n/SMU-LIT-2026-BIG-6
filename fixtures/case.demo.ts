@@ -42,6 +42,7 @@ export const demoCase: CaseRecord = {
       name: "Tan Wei Ling",
       kind: "individual",
       acraProfileNeeded: false,
+      address: "Blk 210 Ang Mo Kio Ave 3, #08-142, Singapore 560210",
       inSingapore: true,
       notes: null,
     },
@@ -52,6 +53,7 @@ export const demoCase: CaseRecord = {
       kind: "business",
       // Business respondent -> a recent ACRA profile is a conditional CJTS document (S3).
       acraProfileNeeded: true,
+      address: "18 Kaki Bukit Road 3, #05-12, Singapore 417818",
       inSingapore: true,
       notes: "Name taken from the quote letterhead. Not yet verified against ACRA.",
     },

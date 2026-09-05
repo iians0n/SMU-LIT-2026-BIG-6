@@ -303,10 +303,13 @@ describe('Scenario 7b — export, keyboard and access', () => {
     // PRD §8: all critical paths must work without audio or colour, with
     // keyboard navigation. A div with onClick is invisible to tab order, so the
     // pages are checked for real button and anchor elements instead.
-    const { readdirSync, readFileSync: read } = await import('node:fs');
-    const pages = ['intake', 'documents', 'chronology', 'evidence']
-      .map((p) => `app/${p}/page.tsx`)
-      .filter((p) => readdirSync('app').some((d) => p.includes(d)));
+    const { existsSync, readFileSync: read } = await import('node:fs');
+    // Every page with interactive controls. Checked for existence rather than
+    // hardcoded, so deleting a page cannot silently drop its coverage.
+    const pages = ['page.tsx', 'documents/page.tsx', 'chronology/page.tsx', 'evidence/page.tsx']
+      .map((p) => `app/${p}`)
+      .filter((p) => existsSync(p));
+    expect(pages.length).toBeGreaterThan(2);
 
     for (const page of pages) {
       const source = read(page, 'utf8');
