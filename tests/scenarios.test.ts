@@ -362,4 +362,13 @@ describe('Scenario 7b — export, keyboard and access', () => {
       expect(issue.reason.trim().length).toBeGreaterThan(0);
     }
   });
+
+  it('makes the filled CJTS guide primary while retaining the detailed preparation PDF', async () => {
+    const { readFileSync } = await import('node:fs');
+    const source = readFileSync('app/prepare/page.tsx', 'utf8');
+    expect(source).toContain('Download filled CJTS entry guide');
+    expect(source).toContain('Detailed preparation PDF');
+    expect(source).toContain("download('cjts-guide')");
+    expect(source).toContain("download('pack')");
+  });
 });

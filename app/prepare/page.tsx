@@ -133,7 +133,7 @@ function Prepare() {
     }
   }
 
-  async function download(kind: 'pack' | 'verification' | 'referral') {
+  async function download(kind: 'pack' | 'verification' | 'referral' | 'cjts-guide') {
     try {
       const response = await fetch('/api/export', {
         method: 'POST',
@@ -208,16 +208,29 @@ function Prepare() {
 
         <aside className="aside prepare-aside">
           <section className="download-card">
-            <h2>Your PDF</h2>
-            <p>Includes your answers, claim details, documents, evidence review and next steps.</p>
-            <Button kind="primary" onClick={() => void download('pack')}>
-              <Download size={17} /> Download preparation PDF
+            <h2>Your CJTS entry guide</h2>
+            <p>Follow this six-page guide beside the current CJTS website and copy each reviewed value into the matching field.</p>
+            <Button
+              kind="primary"
+              disabled={stale || !draft.gapsAcknowledged}
+              onClick={() => void download('cjts-guide')}
+            >
+              <Download size={17} /> Download filled CJTS entry guide
             </Button>
-            <p className="download-note">This does not file or send your claim.</p>
+            <p className="download-note">
+              {stale
+                ? 'Update this page before downloading.'
+                : !draft.gapsAcknowledged
+                  ? 'Check and acknowledge any missing details before downloading.'
+                  : 'This is a copy guide. It does not file or send your claim.'}
+            </p>
 
             <details className="other-downloads">
               <summary>Other PDF options</summary>
               <div className="stack">
+                <Button onClick={() => void download('pack')}>
+                  <Download size={17} /> Detailed preparation PDF
+                </Button>
                 <Button onClick={() => void download('verification')}>
                   <FileCheck2 size={17} /> Verification history
                 </Button>
