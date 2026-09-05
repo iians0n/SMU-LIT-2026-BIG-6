@@ -1,0 +1,7 @@
+'use client';
+import { ExternalLink, Library } from 'lucide-react';
+import { useCase } from '@/components/case-provider';
+import { ViewState } from '@/components/view-state';
+import { Badge, Button, PageHeader } from '@/components/ui';
+function Sources(){const {sources,openSource}=useCase();return <><PageHeader title="Official sources" description="The reviewed material used for procedural guidance."/><div style={{maxWidth:860,marginTop:38}}><div className="callout callout-info"><Library size={19}/><span>These are reviewed source summaries with links to the official pages. They are not quotations or legal advice.</span></div><div style={{marginTop:22}}>{sources.map(source=><article className="section" key={source.id}><div className="row"><div><h3>{source.title}</h3><div className="small muted" style={{marginTop:6}}>Reviewed {new Date(source.reviewedAt).toLocaleDateString('en-SG',{dateStyle:'medium'})} · Version {source.version}</div></div><Badge label={source.available?'Available':'Unavailable'} tone={source.available?'good':'warn'}/></div><p className="muted" style={{lineHeight:1.55}}>{source.passage}</p><div className="row" style={{justifyContent:'flex-start'}}><Button kind="quiet" onClick={()=>openSource(source.id)}>View source record</Button><a className="button button-quiet" href={source.url} target="_blank" rel="noreferrer">Official page <ExternalLink size={15}/></a></div></article>)}</div></div></>}
+export default function Page(){return <ViewState><Sources/></ViewState>}
