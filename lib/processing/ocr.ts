@@ -175,7 +175,7 @@ export async function ocrImage(bytes: Uint8Array): Promise<OcrOutcome> {
         confidence < OCR_UNCERTAIN_MEAN_BELOW ||
         weakWordShare > OCR_UNCERTAIN_WEAK_SHARE_ABOVE,
     };
-  } catch (err) {
+  } catch {
     // Language data is fetched on first use. Offline, that fails — and the
     // correct behaviour is to say so, never to proceed with no text and let the
     // rest of the pipeline read that as "this document says nothing".

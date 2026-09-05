@@ -222,7 +222,9 @@ export async function extractPdf(
 
 export async function extractDocx(
   bytes: Uint8Array,
-  opts: ExtractOptions = {},
+  // Single logical page, so there is nothing for maxPages to limit. Accepted
+  // for signature symmetry with extractPdf.
+  _opts: ExtractOptions = {},
 ): Promise<ExtractionOutcome> {
   try {
     const normalised = toBytes(bytes);
@@ -257,7 +259,7 @@ export async function extractDocx(
 
 export async function extractTxt(
   bytes: Uint8Array,
-  opts: ExtractOptions = {},
+  _opts: ExtractOptions = {},
 ): Promise<ExtractionOutcome> {
   try {
     const text = new TextDecoder("utf-8").decode(toBytes(bytes));

@@ -75,7 +75,7 @@ export async function POST(request: Request) {
         excerpts: result.excerpts.length,
         injectionFindings: result.injectionFindings,
       });
-    } catch (error) {
+    } catch {
       results.push({
         fileName: file.name,
         documentId: null,

@@ -221,7 +221,14 @@ function Questions() {
     setTopics(body.topics);
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const run = load;
+      if (!cancelled) await run();
+    })();
+    return () => { cancelled = true; };
+  }, [load]);
 
   async function respond(action: 'answer' | 'skip' | 'dont_know') {
     if (!next) return;

@@ -200,7 +200,7 @@ export async function ingestDocument(
   let excerpts: Excerpt[] = [];
   let pageCount: number | null = null;
   let uncertain = false;
-  let contribution: VerificationEvent["kind"] = "ai_extracted";
+  const contribution: VerificationEvent["kind"] = "ai_extracted";
 
   if (IMAGE_EXTENSIONS.has(extension)) {
     const result = await ocrImage(bytes);

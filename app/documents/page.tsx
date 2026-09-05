@@ -44,7 +44,14 @@ function DocumentsPage() {
     if (res.ok) setDocuments((await res.json()).documents);
   }, []);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const run = refresh;
+      if (!cancelled) await run();
+    })();
+    return () => { cancelled = true; };
+  }, [refresh]);
 
   async function upload(files: FileList | File[]) {
     const list = Array.from(files);
