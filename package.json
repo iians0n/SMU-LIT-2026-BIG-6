@@ -9,10 +9,12 @@
     "lint": "eslint",
     "fixtures": "tsx scripts/emit-fixtures.ts",
     "typecheck": "tsc --noEmit",
-    "check:fixtures": "tsx scripts/check-fixtures.ts"
+    "check:fixtures": "tsx scripts/check-fixtures.ts",
+    "test": "tsx --test \"lib/**/*.test.ts\""
   },
   "dependencies": {
     "next": "16.3.4",
+    "openai": "^7.10.0",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },

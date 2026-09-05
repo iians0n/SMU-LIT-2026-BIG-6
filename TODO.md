@@ -6,7 +6,9 @@ Working doc for the loop. Not a plan — a queue. Plans live in [anson.md](anson
 
 ---
 
-**Scripts:** `npm run dev` · `build` · `typecheck` · `fixtures` (emit + verify against disk) · `check:fixtures` (run the oracle)
+**Scripts:** `npm run dev` · `build` · `typecheck` · `test` · `fixtures` (emit + verify against disk) · `check:fixtures` (run the 36-expectation oracle)
+
+**Model provider:** OpenAI-API-compatible via `lib/ai/client.ts`, driven by `OPENAI_BASE_URL`. Copy `.env.example` to `.env.local`. No key is set yet, so anything calling a model will throw `ModelUnavailableError` until one is.
 
 ## The loop
 
@@ -64,8 +66,8 @@ Data-first order. Each step should put something on screen.
       *Done when:* a confirmed payment is never re-asked; a possible changed deadline produces a neutral question; the interview terminates
 - [ ] **FR01 voice + text intake** — Web Speech API, start/pause/stop/review, pre-activation notice
       *Done when:* denied mic permission offers text with no dead end; a misheard amount is correctable pre-record; the user's words are visually distinct from the AI summary
-- [ ] **Prompt-injection envelope** — wrap all document text before it reaches a model
-      *Done when:* instructions inside a fixture PDF change nothing
+- [x] **Prompt-injection envelope** — `lib/processing/envelope.ts`, 11 tests
+      *Done when:* instructions inside a fixture PDF change nothing. Per-request nonce fence; a document containing the live nonce is neutralised
 
 *Checkpoint:* swap Clarence off the fixture onto live `/api/case` with zero changes to his code.
 

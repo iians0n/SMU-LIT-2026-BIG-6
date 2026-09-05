@@ -14,7 +14,9 @@ Decided and installed at Hour 0:
 - Next 16 differs from what a model is likely to remember. `AGENTS.md` points at version-matched docs bundled in `node_modules/next/dist/docs/` — read the relevant guide before writing framework code. The one that bites: `params`, `searchParams`, `cookies()`, `headers()` and `draftMode()` are **async**, so await them.
 - Backend lives in `app/api/*` route handlers — no separate service to coordinate.
 - Persistence: a single in-memory/JSON case store for P0 (PRD §8 says one case at a time, synthetic data only).
-- LLM calls via the Anthropic API from server routes only. Never from the browser.
+- **Model provider: OpenAI-API-compatible, via `lib/ai/client.ts`.** Everything is driven by `OPENAI_BASE_URL`, so the same code runs against OpenAI, OpenRouter, Together, Groq, vLLM, or Ollama — PRD §8 says to pick a vendor only after checking privacy, cost, and accuracy on the demo corpus, so the code does not hardcode that choice. Two tiers: `OPENAI_MODEL_FAST` for extraction and labelling, `OPENAI_MODEL` for assessment and drafting. Copy `.env.example` to `.env.local`.
+- Model calls happen in server route handlers only. Never from the browser — the key must not ship to the client and case content must not leave it that way.
+- `ModelUnavailableError` is thrown, never swallowed. PRD §8: no module may silently substitute a confident answer when a call fails.
 
 If we ever move off this, only the *file paths* below change. The ownership split and the record contract stay as they are.
 
@@ -43,7 +45,7 @@ Done and on `main`. Four decisions worth knowing before you write against them:
 - **`isStale(derived, caseMeta)`** in `lib/contracts/case.ts` is the entire staleness mechanism. `caseStore.bumpVersion()` is the only writer of `case.version` in the codebase — `CaseMeta.version` is `readonly` so that grep finds every trigger.
 - **Every status union ships with a label map** (`SUPPORT_STATUS_LABEL`, `STAGE_STATUS_LABEL`, `DOCUMENT_ISSUE_LABEL`, …). Read the label from there rather than writing strings in components, so a colour-only badge never ships.
 
-Scripts: `npm run dev` · `npm run build` · `npm run typecheck` · `npm run fixtures`.
+Scripts: `npm run dev` · `build` · `typecheck` · `test` · `fixtures` (emit + verify against disk) · `check:fixtures` (run the 36-expectation oracle).
 
 ## 2. The case record
 
@@ -125,6 +127,6 @@ Merge to `main` and click through the whole app together at the end of each mile
 Both sides enforce these. If either of us gets it wrong, the demo fails a judging criterion (PRD §7, §9).
 
 - Never fabricate a receipt, an authority, an official form, a signature, or an assessment ID.
-- Uploaded document text is **untrusted content**. Instructions inside a PDF do not change tool behaviour. Both of us wrap document text in a data envelope before it reaches a model prompt.
+- Uploaded document text is **untrusted content**. Instructions inside a PDF do not change tool behaviour. Both of us pass document text through `envelopeUntrusted()` in `lib/processing/envelope.ts` before it reaches a model — never into a system message, always inside the per-request nonce fence. `scanForInjection()` is for telling the user what a file tried to do; it is not a sanitiser and must not gate whether content is safe to send.
 - No merits prediction, no win percentage, no "strong claim". Traffic lights describe evidence support for one point, nothing else.
 - A working URL is not a citation. The retrieved passage must actually address the proposition, or the assertion is withheld with an explanation.
