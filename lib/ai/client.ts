@@ -71,6 +71,92 @@ export class ModelUnavailableError extends Error {
   }
 }
 
+/**
+ * Send a completion, dropping parameters the model rejects and retrying.
+ *
+ * Model families disagree about their own API. gpt-5.6-luna wants
+ * `max_completion_tokens` not `max_tokens`, refuses any `temperature` other
+ * than the default, and will not accept function tools unless
+ * `reasoning_effort` is "none". gpt-4o accepts all of them. Hardcoding a table
+ * of which model tolerates what would be stale within weeks, and the PRD
+ * deliberately leaves the vendor choice open - so the client reads the error,
+ * removes the parameter the API names, and tries again.
+ *
+ * Only ever removes optional tuning parameters, so a retry cannot change what
+ * was asked, just how it was framed.
+ */
+const DROPPABLE = new Set(["temperature", "reasoning_effort", "max_completion_tokens", "top_p"]);
+
+async function createCompletion(
+  body: Record<string, unknown>,
+  model: string,
+): Promise<{ role: string; content: string | null; tool_calls?: unknown[] }> {
+  const attempt = { ...body };
+
+  for (let i = 0; i <= DROPPABLE.size; i++) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const res = await client().chat.completions.create(attempt as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const message = (res as any).choices?.[0]?.message;
+      if (!message) throw new ModelUnavailableError(`${model} returned no message`);
+      return message;
+    } catch (err) {
+      const detail = err as { status?: number; param?: string; error?: { param?: string; message?: string }; message?: string };
+      const param = detail.param ?? detail.error?.param;
+      const text = detail.error?.message ?? detail.message ?? "";
+
+      // "use X instead" - swap rather than drop, so the request still carries a limit.
+      if (param === "max_tokens" && /max_completion_tokens/.test(text)) {
+        attempt.max_completion_tokens = attempt.max_tokens;
+        delete attempt.max_tokens;
+        continue;
+      }
+      // The reasoning-plus-tools restriction names the fix in its message.
+      if (/reasoning_effort to 'none'/.test(text)) {
+        attempt.reasoning_effort = "none";
+        continue;
+      }
+      if (param && DROPPABLE.has(param) && param in attempt) {
+        delete attempt[param];
+        continue;
+      }
+      if (err instanceof ModelUnavailableError) throw err;
+      throw new ModelUnavailableError(`${model} request failed: ${text.slice(0, 200)}`, err);
+    }
+  }
+  throw new ModelUnavailableError(`${model} rejected every parameter combination tried`);
+}
+
+/**
+ * A chat turn that may call tools.
+ *
+ * Exposed separately from complete() because the agent needs the raw message
+ * objects back - tool calls have to be appended to the transcript and answered
+ * before the next turn, and flattening them to a string would lose that.
+ */
+export async function chatWithTools(params: {
+  messages: unknown[];
+  tools: unknown[];
+  tier?: "fast" | "heavy";
+  temperature?: number;
+  maxTokens?: number;
+}): Promise<{ message: { role: string; content: string | null; tool_calls?: unknown[] } }> {
+  const cfg = modelConfig();
+  const model = params.tier === "fast" ? cfg.fastModel : cfg.heavyModel;
+  const message = await createCompletion(
+    {
+      model,
+      messages: params.messages,
+      tools: params.tools,
+      temperature: params.temperature ?? 0.3,
+      max_completion_tokens: params.maxTokens ?? 4000,
+    },
+    model,
+  );
+  return { message };
+}
+
 export interface CompleteOptions {
   /** Which tier. Default "fast". */
   tier?: "fast" | "heavy";
@@ -88,18 +174,20 @@ export async function complete(opts: CompleteOptions): Promise<string> {
   const model = opts.tier === "heavy" ? cfg.heavyModel : cfg.fastModel;
 
   try {
-    const res = await client().chat.completions.create({
+    const message = await createCompletion(
+      {
+        model,
+        temperature: opts.temperature ?? 0,
+        max_completion_tokens: opts.maxTokens ?? 2048,
+        messages: [
+          { role: "system", content: opts.system },
+          { role: "user", content: opts.user },
+        ],
+      },
       model,
-      temperature: opts.temperature ?? 0,
-      max_tokens: opts.maxTokens ?? 2048,
-      messages: [
-        { role: "system", content: opts.system },
-        { role: "user", content: opts.user },
-      ],
-    });
-    const text = res.choices[0]?.message?.content;
-    if (!text) throw new ModelUnavailableError(`${model} returned no content`);
-    return text;
+    );
+    if (!message.content) throw new ModelUnavailableError(`${model} returned no content`);
+    return message.content;
   } catch (err) {
     if (err instanceof ModelUnavailableError) throw err;
     throw new ModelUnavailableError(`${model} request failed`, err);
@@ -121,20 +209,24 @@ export async function completeJson<T>(
 
   let raw: string;
   try {
-    const res = await client().chat.completions.create({
+    const message = await createCompletion(
+      {
+        model,
+        temperature: opts.temperature ?? 0,
+        max_completion_tokens: opts.maxTokens ?? 2048,
+        // Widely supported across OpenAI-compatible providers. json_schema is not,
+        // so we ask for an object and validate it ourselves.
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: opts.system },
+          { role: "user", content: opts.user },
+        ],
+      },
       model,
-      temperature: opts.temperature ?? 0,
-      max_tokens: opts.maxTokens ?? 2048,
-      // Widely supported across OpenAI-compatible providers. json_schema is not,
-      // so we ask for an object and validate it ourselves.
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: opts.system },
-        { role: "user", content: opts.user },
-      ],
-    });
-    raw = res.choices[0]?.message?.content ?? "";
+    );
+    raw = message.content ?? "";
   } catch (err) {
+    if (err instanceof ModelUnavailableError) throw err;
     throw new ModelUnavailableError(`${model} request failed`, err);
   }
 

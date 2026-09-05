@@ -22,7 +22,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 
 const primary = [
-  ['/', 'Overview', Home, ''],
+  ['/', 'Talk it through', MessagesSquare, ''],
   ['/intake', 'Explain what happened', MessagesSquare, '1'],
   ['/documents', 'Add documents', FolderOpen, '2'],
   ['/chronology', 'Confirm the facts', UserRound, '3'],
