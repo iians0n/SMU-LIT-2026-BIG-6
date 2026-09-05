@@ -1,0 +1,17 @@
+This is a fictional demo case. Please record every concrete detail below as separate facts, record both parties, and set the claim type. Do not combine the payment, refund, missed completion, condition of the bathroom, contractor response, and requested outcome into one fact.
+
+I am Aisha Rahman, NRIC S9000001A. My email is aisha.rahman@example.com and my address is 51 Demo Street, #09-18, Singapore 540051. I am in Singapore.
+
+The respondent is Northstar Bathroom Works Pte. Ltd., UEN 202600001N, at 18 Ubi Demo Road 1, #03-07, Singapore 408018. It is a business in Singapore.
+
+This is a services dispute about bathroom renovation work at my home. We signed agreement BR-2026-061 on 3 June 2026. Northstar agreed to remove the old tiles, complete waterproofing, install new tiles and shower fittings, test for leaks, clear the debris, and leave the bathroom usable. The fixed price was S$8,400 and the exact completion date was 30 June 2026.
+
+I paid S$4,200 on 3 June 2026 and S$4,200 on 15 June 2026, for a total of S$8,400.
+
+Northstar did not finish by 30 June 2026. On 2 July 2026, its director confirmed in writing that the waterproofing, floor tiling, shower reconnection, testing, and clean-up were unfinished and that the bathroom was not ready for use.
+
+An independent inspection on 8 July 2026 found exposed floor substrate, incomplete waterproofing, no floor tiles, missing wall tiles, disconnected shower fittings, and construction debris. The bathroom was not ready for normal use.
+
+Northstar said a tiler had left unexpectedly. It offered either to return on 25 July 2026 or to refund S$1,000 while I considered appointing someone else. I received the S$1,000 partial refund on 5 July 2026.
+
+After subtracting that refund from the S$8,400 paid, S$7,400 remains with Northstar. I sent a written request on 10 July 2026 asking Northstar to refund exactly S$7,400 by 24 July 2026. I am claiming S$7,400. I am not claiming the S$1,000 already returned, inspection fees, interest, or replacement-contractor costs.

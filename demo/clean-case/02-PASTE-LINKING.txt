@@ -1,0 +1,3 @@
+Please now read all five uploaded documents and link their exact passages to every existing fact they directly support. Search separately for: (1) agreement, scope, price and completion date; (2) both payments; (3) missed completion and unfinished work; (4) the independent inspection and unusable bathroom; (5) the contractor's explanation, offer and partial refund; and (6) the S$7,400 calculation and refund request.
+
+For every direct match, call link_fact_to_excerpts. Copy the value of the returned excerptId field exactly; excerpt IDs start with e_. Do not pass documentId values, which start with d_. Do not create duplicate facts. When finished, tell me which existing fact was linked to which filename.
