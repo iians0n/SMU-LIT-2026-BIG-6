@@ -1,34 +1,40 @@
 {
-  "name": "sct-prep-dashboard",
+  "name": "casepath",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint",
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "next build --webpack",
+    "start": "next start --hostname 127.0.0.1",
+    "lint": "eslint .",
     "fixtures": "tsx scripts/emit-fixtures.ts",
     "typecheck": "tsc --noEmit",
     "check:fixtures": "tsx scripts/check-fixtures.ts",
-    "test": "tsx --test \"lib/**/*.test.ts\""
+    "test:shared": "tsx --test \"lib/**/*.test.ts\"",
+    "test:dashboard": "vitest run",
+    "test": "npm run test:shared && npm run test:dashboard"
   },
   "dependencies": {
+    "jszip": "^3.10.1",
+    "lucide-react": "^0.468.0",
     "mammoth": "^1.12.2",
     "next": "16.3.4",
     "openai": "^7.10.0",
     "pdfjs-dist": "^6.3.289",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "zod": "^4.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^22.0.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
-    "typescript": "^5"
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
   }
 }

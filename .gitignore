@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# keep the provider template committed; .env* above would otherwise swallow it
+!.env.example
+
+# test artefacts
+test-results/
+playwright-report/

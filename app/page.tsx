@@ -1,46 +1,9 @@
-import { getCase } from "@/lib/store";
-import { STAGE_LABEL, STAGE_STATUS_LABEL } from "@/lib/contracts";
+'use client';
+import Link from 'next/link';
+import { AlertCircle, BriefcaseBusiness, Check, CircleDollarSign, FileText, GitPullRequestArrow, UserRound } from 'lucide-react';
+import { useCase } from '@/components/case-provider';
+import { ViewState } from '@/components/view-state';
+import { Badge, PageHeader } from '@/components/ui';
 
-/**
- * Placeholder. Clarence owns this page — the real overview lands in his M2
- * (see clarence.md §2). This exists only so Hour 0 has a visible smoke test
- * that contracts + store + fixture actually load together.
- */
-export default function Home() {
-  const record = getCase();
-
-  return (
-    <main className="mx-auto max-w-2xl p-8 font-sans">
-      <p className="text-xs uppercase tracking-wide text-neutral-500">
-        Hour 0 scaffold — Clarence owns this page
-      </p>
-      <h1 className="mt-2 text-2xl font-semibold">Small Claims Preparation Dashboard</h1>
-
-      <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-        <dt className="text-neutral-500">Case</dt>
-        <dd>{record.case.id}</dd>
-        <dt className="text-neutral-500">Version</dt>
-        <dd>{record.case.version}</dd>
-        <dt className="text-neutral-500">Stage</dt>
-        <dd>
-          {STAGE_LABEL[record.case.stage]} —{" "}
-          {STAGE_STATUS_LABEL[record.case.stageStatus[record.case.stage]]}
-        </dd>
-      </dl>
-
-      <ul className="mt-6 space-y-1 text-sm text-neutral-600">
-        <li>{record.documents.length} documents</li>
-        <li>{record.facts.length} facts</li>
-        <li>{record.issues.length} issue assessments</li>
-        <li>{record.contradictions.length} contradictions detected</li>
-        <li>{record.openQuestions.filter((q) => q.status === "open").length} open questions</li>
-      </ul>
-
-      <p className="mt-6 text-sm">
-        <a className="underline" href="/api/case">
-          GET /api/case
-        </a>
-      </p>
-    </main>
-  );
-}
+function Overview(){const {record,workflow}=useCase();if(!record||!workflow)return null;const current=workflow.tasks.filter(t=>t.sourceCaseVersion===record.version);const reviewed=current.filter(t=>t.status==='Reviewed').length;const stale=workflow.tasks.some(t=>t.sourceCaseVersion!==record.version)||workflow.route.sourceCaseVersion!==record.version||workflow.draft.sourceCaseVersion!==record.version;const next=stale?'Review updates to your case':workflow.route.reviewed?'Choose what to do next':'Review your filing route';const href=stale?'/route':workflow.route.reviewed?'/options':'/route';return <><PageHeader title="Your case, at a glance" description={record.title}/><div className="split"><div><section className="section"><h3>Your next step</h3><div className="action-band row" style={{marginTop:16}}><div><strong>{next}</strong>{stale&&<div className="small muted" style={{marginTop:4}}>Some preparation was created from an earlier case version.</div>}</div><Link className="button button-primary" href={href}>{stale?'Review changes':'Continue'}<GitPullRequestArrow size={17}/></Link></div></section><section className="section"><h3>Preparation progress</h3><p style={{color:'var(--green)',fontWeight:650}}>{reviewed} of {current.length} tasks reviewed</p><div className="progress-line"><div className="progress-fill" style={{width:current.length?`${reviewed/(current.length-1||1)*100}%`:'0%'}}/><div className="progress-points">{current.map(t=><span key={t.id} className={`progress-point ${t.status==='Reviewed'?'done':''}`} aria-label={`${t.title}: ${t.status}`}>{t.status==='Reviewed'&&<Check size={12}/>}</span>)}</div></div></section><section className="section"><h3>Needs your attention</h3><div style={{marginTop:10}}>{record.unresolvedQuestions.slice(0,3).map((q,i)=><div className="attention" key={q}><AlertCircle size={19} className={i?'icon-bad':'icon-warn'}/><span>{q}</span></div>)}</div></section><section className="section"><div className="row"><h3>Your documents</h3><Link href="/documents" className="small" style={{color:'var(--green)',fontWeight:650}}>View all</Link></div><table className="data-table" style={{marginTop:8}}><thead><tr><th>File name</th><th>Type</th><th>Status</th><th>Last updated</th></tr></thead><tbody>{record.documents.map(doc=><tr key={doc.id}><td><span className="row-start"><FileText size={18} className="icon-good"/><strong>{doc.name}</strong></span></td><td>{doc.name.split('.').pop()?.toUpperCase()}</td><td><Badge label={doc.processingStatus==='ready'?'Ready':doc.processingStatus.replaceAll('_',' ')} tone={doc.processingStatus==='ready'?'good':'warn'}/></td><td>{new Date(doc.updatedAt).toLocaleDateString('en-SG',{dateStyle:'medium'})}</td></tr>)}</tbody></table></section></div><aside className="aside"><h3>Case details</h3><div className="metric-list" style={{marginTop:12}}><div className="metric"><CircleDollarSign size={21}/><span className="muted">Claim amount</span><strong>{record.amountCents===null?'Unknown':`S$${(record.amountCents/100).toLocaleString('en-SG',{minimumFractionDigits:2})}`}</strong></div><div className="metric"><BriefcaseBusiness size={21}/><span className="muted">Type</span><strong style={{textTransform:'capitalize'}}>{record.claimType}</strong></div><div className="metric"><UserRound size={21}/><span className="muted">Record version</span><strong>{record.version}</strong></div></div></aside></div></>}
+export default function Page(){return <ViewState><Overview/></ViewState>}
