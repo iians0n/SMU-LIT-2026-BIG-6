@@ -5,8 +5,8 @@
  * Thin on purpose: the store is the thing, this just exposes it.
  */
 
-import { getCase } from "@/lib/store";
+import { currentCaseWithDerivedState } from "@/lib/workflow";
 
 export async function GET() {
-  return Response.json(getCase());
+  return Response.json(currentCaseWithDerivedState());
 }

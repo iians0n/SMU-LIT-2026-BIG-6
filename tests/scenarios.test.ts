@@ -20,6 +20,8 @@ import { adaptCaseRecord } from '@/lib/dashboard/adapt-case';
 import { assembleDraft, amountCalculation, readyForTransfer, validateEdit } from '@/lib/drafting';
 import { screenRoute } from '@/lib/rules/rules.v1';
 import { SUPPORT_STATUS_LABEL } from '@/lib/contracts';
+import { runTool } from '@/lib/agent/tools';
+import { getWorkflow } from '@/lib/workflow';
 
 import { POST as uploadDocuments, DELETE as removeDocument } from '@/app/api/documents/route';
 import { POST as updateFact } from '@/app/api/facts/route';
@@ -55,6 +57,37 @@ describe('Scenario 1 — complete goods or services dispute', () => {
       expect(ref.kind === 'fact' ? factIds.has(ref.id) : excerptIds.has(ref.id)).toBe(true);
     }
     expect(draft.gaps.length).toBeGreaterThan(0); // unresolved items are listed, not hidden
+  });
+
+  it('builds evidence, provenance links, and current workflow outputs from an empty browser-shaped case', async () => {
+    resetCase();
+    const form = new FormData();
+    form.append('files', new File([
+      'Accepted quote for bathroom repairs. Total S$2,000. Work to be completed by 15 July 2026.',
+    ], 'accepted-quote.txt'));
+    const uploadResponse = await uploadDocuments(new Request('http://x/api/documents', { method: 'POST', body: form }));
+    expect(uploadResponse.status).toBe(200);
+
+    const excerptId = getCase().excerpts[0]?.id;
+    expect(excerptId).toBeTruthy();
+    expect(getCase().issues).toHaveLength(6);
+    expect(getCase().issues.every((issue) => issue.sourceCaseVersion === getCase().case.version)).toBe(true);
+
+    await runTool('record_fact', {
+      kind: 'agreement',
+      statement: 'The accepted quote was S$2,000 for bathroom repairs.',
+      amountSgd: 2000,
+      excerptIds: [excerptId],
+    });
+    const fact = getCase().facts.at(-1)!;
+    expect(fact.excerptIds).toEqual([excerptId]);
+    expect(getCase().issues.find((issue) => issue.issueId === 'agreement_and_terms')?.supportStatus).toBe('supported');
+
+    const adapted = adaptCaseRecord(getCase(), 'live-owner');
+    const workflow = getWorkflow(adapted);
+    expect(workflow.route.sourceCaseVersion).toBe(adapted.version);
+    expect(workflow.tasks.every((task) => task.sourceCaseVersion === adapted.version)).toBe(true);
+    expect(workflow.draft.sourceCaseVersion).toBe(adapted.version);
   });
 });
 

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { api,requireCase,checkVersion } from '@/lib/server/session';
 import { patchCase,bumpVersion } from '@/lib/store';
-import { appendVerification } from '@/lib/workflow';
+import { appendVerification,synchroniseDerivedCase } from '@/lib/workflow';
 
 const schema=z.object({scenario:z.enum(['unsupported','changed_amount','uncertain','supported']),version:z.number().int()});
 export async function POST(request:Request){return api(request,async()=>{
@@ -20,5 +20,6 @@ export async function POST(request:Request){return api(request,async()=>{
   }
  });
  bumpVersion(`synthetic demo scenario: ${body.scenario}`);
+ synchroniseDerivedCase();
  const next=requireCase(request);appendVerification(next,{action:'case_updated',description:`Synthetic demo scenario: ${body.scenario}`,sourceCaseVersion:next.version,sourceRefs:[],aiDrafted:false});return next;
 });}

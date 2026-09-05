@@ -11,6 +11,7 @@
 import { UPLOAD_LIMITS } from "@/lib/contracts";
 import { ingestDocument } from "@/lib/processing/ingest";
 import { bumpVersion, getCase, patchCase } from "@/lib/store";
+import { synchroniseDerivedCase } from "@/lib/workflow";
 
 function bad(message: string, status = 400) {
   return Response.json({ error: message }, { status });
@@ -92,6 +93,7 @@ export async function POST(request: Request) {
   // New material can change what the record supports, so anything derived from
   // the previous version needs another look.
   const version = bumpVersion(`uploaded ${results.length} file(s)`);
+  synchroniseDerivedCase();
 
   const skipped = files.length - Math.min(files.length, remaining);
   return Response.json({
@@ -142,6 +144,7 @@ export async function DELETE(request: Request) {
   });
 
   const version = bumpVersion(`removed ${document.fileName}`);
+  synchroniseDerivedCase();
   return Response.json({
     caseVersion: version,
     removed: document.fileName,

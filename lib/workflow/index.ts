@@ -4,7 +4,10 @@ import { assembleDraft } from '@/lib/drafting';
 import { screenRoute } from '@/lib/rules/rules.v1';
 import { getCase,patchCase } from '@/lib/store';
 import { VERIFICATION_EVENT_LABEL, type VerificationEvent as SharedVerificationEvent } from '@/lib/contracts';
-export interface Workflow { route:RouteScreening;tasks:Task[];draft:Draft;option:Option|null;verification:VerificationEvent[]; }
+import { adaptCaseRecord } from '@/lib/dashboard/adapt-case';
+import { assessEvidence } from '@/lib/assessment/evaluate';
+import { detectContradictions } from '@/lib/assessment/contradictions';
+export interface Workflow { caseId:string;route:RouteScreening;tasks:Task[];draft:Draft;option:Option|null;verification:VerificationEvent[]; }
 export function createTasks(c:Case):Task[] {
  const task=(id:string,title:string,purpose:string,assertionId:string,requiredMaterial:string[],dependencies:string[]=[]):Task=>({id,title,purpose,assertionId,requiredMaterial,dependencies,status:'Not started',sourceCaseVersion:c.version});
  const tasks=[task('facts','Review the confirmed account','Check names, dates and what remains uncertain.','responsibility',['Confirmed facts','Original documents']),task('route','Review the filing route','Understand the screening result and its limitations.','assessment',['Claim type','Amount','Relevant event date','Respondent location']),task('assessment','Complete the CJTS pre-filing assessment','Keep the genuine ID supplied by CJTS.','assessment',['Official assessment ID'],['route']),task('draft','Review the preparation draft','Compare each field with its linked source.','responsibility',['Draft','Sources'],['facts']),task('documents','Prepare supporting PDFs','Organise relevant material for your claim.','filing',['Supporting PDFs'])];
@@ -14,9 +17,45 @@ export function createTasks(c:Case):Task[] {
 }
 const globalWorkflow=globalThis as unknown as {casepathWorkflows?:Map<string,Workflow>};
 const workflows=globalWorkflow.casepathWorkflows??=new Map<string,Workflow>();
+function buildWorkflow(c:Case,option:Option|null=null):Workflow {
+ return {caseId:c.id,route:screenRoute(c),tasks:createTasks(c),draft:assembleDraft(c,c.contradictions),option,verification:[]};
+}
 export function getWorkflow(c:Case):Workflow {
- if(!workflows.has(c.ownerId))workflows.set(c.ownerId,{route:screenRoute(c),tasks:createTasks(c),draft:assembleDraft(c,c.contradictions),option:null,verification:[]});
+ const existing=workflows.get(c.ownerId);
+ if(!existing)workflows.set(c.ownerId,buildWorkflow(c));
+ else if(existing.caseId!==c.id||existing.route.sourceCaseVersion!==c.version||existing.draft.sourceCaseVersion!==c.version||existing.tasks.some(t=>t.sourceCaseVersion!==c.version)){
+  const rebuilt=buildWorkflow(c,existing.option);
+  rebuilt.verification=existing.verification;
+  if(rebuilt.option==='file'&&rebuilt.route.outcome!=='appears_supported')rebuilt.option=null;
+  workflows.set(c.ownerId,rebuilt);
+ }
  return workflows.get(c.ownerId)!;
+}
+
+/** Keep all rule-derived shared fields aligned with the material case version. */
+export function synchroniseDerivedCase():void {
+ const record=getCase();
+ const current=record.issues.length===6&&record.issues.every(issue=>issue.sourceCaseVersion===record.case.version)
+  &&record.contradictions.every(item=>item.sourceCaseVersion===record.case.version);
+ if(current)return;
+ const contradictions=detectContradictions(record);
+ const issues=assessEvidence(record,contradictions);
+ patchCase(draft=>{draft.contradictions=contradictions;draft.issues=issues;});
+ invalidateWorkflowCaches();
+}
+
+/** Used by the case endpoint so a fresh or reset browser case is never blank. */
+export function currentCaseWithDerivedState(){
+ synchroniseDerivedCase();
+ return getCase();
+}
+
+/** Refresh every cached session on its next read after a shared-record mutation. */
+export function invalidateWorkflowCaches():void {
+ for(const [owner,workflow] of workflows){
+  const c=adaptCaseRecord(getCase(),owner);
+  if(workflow.route.sourceCaseVersion!==c.version)getWorkflow(c);
+ }
 }
 export function appendVerification(c:Case,input:Omit<VerificationEvent,'id'|'caseId'|'actorId'|'timestamp'>) {
  const event:VerificationEvent={...input,id:randomUUID(),caseId:c.id,actorId:c.ownerId,timestamp:new Date().toISOString()};

@@ -173,9 +173,14 @@ function EvidencePage() {
 
       <div className="split">
         <div>
-          {record.issues.map((issue) => (
-            <Row key={issue.id} issue={issue} record={record} />
-          ))}
+          {record.issues.length === 0 ? (
+            <section className="section">
+              <h2>Assessment is being prepared</h2>
+              <p className="muted">Return to your documents and make sure each file has finished processing, then reload this page.</p>
+            </section>
+          ) : record.issues.map((issue) => (
+              <Row key={issue.id} issue={issue} record={record} />
+            ))}
         </div>
 
         <aside className="aside">

@@ -12,6 +12,7 @@
 
 import type { Fact, VerificationEvent } from "@/lib/contracts";
 import { bumpVersion, getCase, patchCase } from "@/lib/store";
+import { synchroniseDerivedCase } from "@/lib/workflow";
 
 type Action = "confirm" | "unconfirm" | "dispute" | "resolve_dispute" | "correct" | "unknown";
 
@@ -90,6 +91,10 @@ export async function POST(request: Request) {
       fact.origin = "user_stated";
       fact.confirmedByUser = false;
       fact.unknown = false;
+      // A changed statement is no longer automatically backed by passages
+      // linked to the previous wording. The assistant can re-link passages
+      // after reading and checking them against the correction.
+      fact.excerptIds = [];
       break;
     }
     default:
@@ -123,6 +128,7 @@ export async function POST(request: Request) {
     // A confirmed record that has since moved needs looking at again.
     draft.case.stageStatus.confirm = "needs_review";
   });
+  synchroniseDerivedCase();
 
   return Response.json({ caseVersion: version, changed: true, fact: getCase().facts.find((f) => f.id === fact.id) });
 }

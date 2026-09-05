@@ -161,6 +161,7 @@ export async function runTurn(history: ChatMessage[]): Promise<TurnResult> {
             `Added to the form: ${args.role === "respondent" ? "who you are claiming against" : "your details"} — ${String(args.name ?? "")}`,
           set_claim_type: () => `Set the nature of the dispute`,
           note_unknown: () => "Recorded as not known",
+          link_fact_to_excerpts: () => "Linked an uploaded passage to an existing fact",
         };
         actions.push(describe[call.function.name]?.() ?? `Updated the case`);
       }
