@@ -97,12 +97,14 @@ export const OCR_TEXT_THRESHOLD = 32;
  * this, so every extractor normalises first.
  */
 function toBytes(input: Uint8Array): Uint8Array {
-  const isPlainAndTight =
-    input.constructor === Uint8Array &&
-    input.byteOffset === 0 &&
-    input.byteLength === input.buffer.byteLength;
-  if (isPlainAndTight) return input;
-
+  // Always copy. There was a fast path returning the input unchanged when it
+  // was already plain and tightly bound, and it caused a genuinely nasty bug:
+  // pdfjs TRANSFERS the buffer it is handed, so the caller's bytes were
+  // detached once extraction ran. Reading the same file again - which ingest
+  // does when a PDF turns out to be a scan and has to be rasterised - then saw
+  // an empty buffer and reported a perfectly good document as corrupt.
+  //
+  // One copy per file is not worth the aliasing hazard.
   const copy = new Uint8Array(input.byteLength);
   copy.set(input);
   return copy;

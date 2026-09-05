@@ -100,3 +100,49 @@ describe("ingestDocument", () => {
     assert.match(r.injectionFindings[0].why, /ignore/i);
   });
 });
+
+describe("scanned PDFs", () => {
+  it("reads a PDF that has no text layer by rendering and OCRing it", SLOW, async () => {
+    // What a self-represented user actually produces: a photographed document
+    // wrapped in a PDF. Returning an empty document would be indistinguishable
+    // from a document that says nothing.
+    const r = await ingestDocument(
+      { fileName: "scanned-receipt.pdf", bytes: bytes("scanned-receipt.pdf") },
+      ctx(),
+    );
+    assert.equal(r.document.processingStatus, "extracted");
+    assert.ok(r.excerpts.length > 0, "no text recovered from the scan");
+    assert.ok(
+      r.excerpts.some((e) => /Tan Wei Ling/i.test(e.text)),
+      `did not recover the payer: ${r.excerpts.map((e) => e.text).join(" | ").slice(0, 160)}`,
+    );
+    assert.match(r.verificationEvents[0].note ?? "", /OCR/);
+  });
+
+  it("flags the scan when any single passage is unreliable", SLOW, async () => {
+    // The page averaged 0.92 while reading the receipt total as "$$2,000.00"
+    // at 0.44. A page-level average would have called that clean.
+    const r = await ingestDocument(
+      { fileName: "scanned-receipt.pdf", bytes: bytes("scanned-receipt.pdf") },
+      ctx(),
+    );
+    const weakest = Math.min(...r.excerpts.map((e) => e.extractionConfidence));
+    assert.ok(weakest < 0.6, `weakest passage was ${weakest}`);
+    assert.ok(r.document.issues.includes("low_quality_scan"));
+  });
+
+  it("never presents OCR'd scan text as a clean text layer", SLOW, async () => {
+    const scan = await ingestDocument(
+      { fileName: "scanned-receipt.pdf", bytes: bytes("scanned-receipt.pdf") },
+      ctx(),
+    );
+    const native = await ingestDocument(
+      { fileName: "quote-accepted.pdf", bytes: bytes("quote-accepted.pdf") },
+      ctx(),
+    );
+    // A real text layer is read exactly; OCR never is, and the confidence has
+    // to say so.
+    assert.ok(native.excerpts.every((e) => e.extractionConfidence === 1));
+    assert.ok(scan.excerpts.every((e) => e.extractionConfidence < 1));
+  });
+});

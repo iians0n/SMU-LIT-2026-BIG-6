@@ -16,6 +16,7 @@
     "demo": "tsx scripts/demo-run.ts"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^1.0.8",
     "jszip": "^3.10.1",
     "lucide-react": "^0.468.0",
     "mammoth": "^1.12.2",

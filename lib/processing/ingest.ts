@@ -24,10 +24,14 @@ import {
 } from "@/lib/contracts";
 import { extract, type ExtractedTextItem } from "./extract";
 import { ocrImage } from "./ocr";
+import { rasterizePdf } from "./rasterize";
 import { scanForInjection } from "./envelope";
 import { proposeLabel } from "./label";
 
 const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png"]);
+
+/** A single passage this uncertain makes the whole document worth flagging. */
+const WEAK_EXCERPT_BELOW = 0.6;
 
 export interface IngestInput {
   fileName: string;
@@ -219,12 +223,66 @@ export async function ingestDocument(
     if (result.truncated) issues.push("truncated");
 
     if (result.needsOcr) {
-      // A scanned PDF. Rasterising pages for OCR needs a canvas backend we do
-      // not carry in P0, so this is reported as a scan with no readable text
-      // rather than silently returning an empty document - which the rest of
-      // the pipeline would read as "this file says nothing".
-      issues.push("low_quality_scan");
-      uncertain = true;
+      // A scanned PDF: someone photographed a document and their phone wrapped
+      // it in a PDF. There is no text layer, and returning an empty document
+      // would be indistinguishable from a document that says nothing. Render
+      // the pages and read them the same way an uploaded photo is read.
+      const rendered = await rasterizePdf(bytes);
+      if (rendered.kind === "failed") {
+        return fail("unreadable", rendered.reason);
+      }
+
+      const ocrPages: Excerpt[] = [];
+      let worst = 1;
+      for (const page of rendered.pages) {
+        const read = await ocrImage(page.bytes);
+        if (read.kind === "failed") continue;
+        if (read.uncertain) uncertain = true;
+        worst = Math.min(worst, read.confidence);
+        ocrPages.push(
+          ...groupIntoExcerpts(
+            read.lines.map((l) => ({ text: l.text, bbox: l.bbox, confidence: l.confidence })),
+            page.page,
+            idFor,
+            id,
+          ),
+        );
+      }
+
+      if (ocrPages.length === 0) {
+        return fail(
+          "unreadable",
+          "This looks like a scan, but we could not make out any text in it. A clearer photo of the document may work better.",
+        );
+      }
+      // Page-level confidence can look healthy while individual passages are
+      // poor - this scan averaged 0.92 while reading the receipt total as
+      // "$$2,000.00" at 0.44. The weakest passage decides, because that is the
+      // one someone will copy a figure out of.
+      const weakest = Math.min(...ocrPages.map((e) => e.extractionConfidence));
+      if (uncertain || weakest < WEAK_EXCERPT_BELOW) {
+        uncertain = true;
+        issues.push("low_quality_scan");
+      }
+      if (rendered.truncated && !issues.includes("truncated")) issues.push("truncated");
+
+      return {
+        document: { ...base, issues, pageCount, proposedLabel: proposeLabel(fileName, ocrPages.map((e) => e.text).join("\n"))?.label ?? null },
+        excerpts: ocrPages,
+        verificationEvents: [
+          {
+            id: `ve_${hash.slice(7, 19)}`,
+            kind: "ai_extracted",
+            affectedOutput: `document:${id}`,
+            usedFactIds: [],
+            usedSourceIds: [],
+            note: `${ocrPages.length} passage(s) read by OCR from a scanned PDF${uncertain ? ", flagged uncertain" : ""}.`,
+            at: uploadedAt,
+            caseVersion: context.caseVersion,
+          },
+        ],
+        injectionFindings: ocrPages.flatMap((e) => scanForInjection(e.text)),
+      };
     }
 
     excerpts = result.pages.flatMap((page) =>

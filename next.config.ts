@@ -5,7 +5,7 @@ const config: NextConfig = {
   // does not exist, and the request hangs on a module it can never load -
   // passing tests the whole time, because tsx does not bundle. Keeping them
   // external lets normal node_modules resolution apply.
-  serverExternalPackages: ['tesseract.js', 'pdfjs-dist'],
+  serverExternalPackages: ['tesseract.js', 'pdfjs-dist', '@napi-rs/canvas'],
 
   async rewrites() {
     // Fallback only: Anson's concrete routes take precedence without changing consumers.

@@ -113,6 +113,6 @@ All four verified present and building after the merge. Two defects found and fi
 
 ## Parked
 
-- **OCR for scanned PDFs.** Rasterising pages needs a canvas backend not carried in P0. Scanned PDFs are flagged as scans with no readable text rather than returned as empty documents. Unblocks with `@napi-rs/canvas` plus a pdfjs render pass.
+- **A real accessibility pass.** Keyboard coverage is asserted structurally (real `<button>` elements, `aria-expanded` on disclosures) rather than by driving a browser. That is the weakest guarantee in the suite and the part of PRD §8 most worth revisiting before a pilot.
 - **Model-assisted extraction.** `lib/ai/client.ts` is wired and provider-agnostic but nothing calls it yet — no key is configured, and every module that would use it works deterministically without one. That was the right order: the deterministic paths are the ones under test.
 - **`over_size_limit` fixture.** A >20 MB file does not belong in git; the check is on `UPLOAD_LIMITS.maxBytesPerFile` and is covered by a stub.

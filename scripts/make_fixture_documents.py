@@ -23,6 +23,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
+from reportlab.lib.utils import ImageReader
 from reportlab import rl_config
 
 # reportlab stamps a creation timestamp by default, which would give every
@@ -340,6 +341,31 @@ def make_corrupted() -> None:
     print("corrupted-scan.pdf          malformed -> unreadable")
 
 
+def make_scanned_pdf() -> None:
+    """
+    A photographed receipt saved as a PDF: no text layer at all.
+
+    This is what a self-represented user actually produces - they photograph a
+    document and their phone or scanner wraps it in a PDF. Extraction finds
+    nothing, so the pipeline has to notice it is a scan and OCR the rendered
+    page rather than reporting an empty document.
+    """
+    img = Image.open(p("receipt.jpg"))
+    w, h = A4
+    scale = min((w - 40 * mm) / img.width, (h - 40 * mm) / img.height)
+    c = canvas.Canvas(p("scanned-receipt.pdf"), pagesize=A4, invariant=1)
+    c.drawImage(
+        ImageReader(p("receipt.jpg")),
+        20 * mm,
+        h - 20 * mm - img.height * scale,
+        width=img.width * scale,
+        height=img.height * scale,
+    )
+    c.showPage()
+    c.save()
+    print("scanned-receipt.pdf         image only, no text layer -> needs OCR")
+
+
 def make_unsupported() -> None:
     """.rtf is outside the supported set. Must be visibly unsupported, never 'read'."""
     rtf = (
@@ -365,5 +391,6 @@ if __name__ == "__main__":
     make_password_protected()
     make_truncated()
     make_corrupted()
+    make_scanned_pdf()
     make_unsupported()
     print("\nfixtures/documents/ regenerated")
