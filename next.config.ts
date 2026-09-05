@@ -12,7 +12,7 @@ const config: NextConfig = {
     return { beforeFiles: [], afterFiles: [], fallback: [
       { source: '/api/case', destination: '/api/demo/case' },
       { source: '/api/case/:path*', destination: '/api/demo/case/:path*' },
-      ...['intake','documents','chronology','evidence'].map(stage => ({source:`/${stage}`, destination:`/integration?stage=${stage}`})),
+      ...['documents','chronology','evidence'].map(stage => ({source:`/${stage}`, destination:`/integration?stage=${stage}`})),
     ] };
   },
 };

@@ -6,7 +6,7 @@
  */
 
 import type { CaseMeta, CaseRecord } from "@/lib/contracts";
-import { demoCase } from "@/fixtures/case.demo";
+import { emptyCase } from "./emptyCase";
 
 /**
  * Survives Next's dev-mode module reloading. Without this, every hot reload
@@ -21,7 +21,7 @@ interface Holder {
 function holder(): Holder {
   const g = globalThis as unknown as Record<symbol, Holder | undefined>;
   if (!g[HOLDER_KEY]) {
-    g[HOLDER_KEY] = { record: structuredClone(demoCase) };
+    g[HOLDER_KEY] = { record: emptyCase() };
   }
   return g[HOLDER_KEY]!;
 }
@@ -62,9 +62,12 @@ export function bumpVersion(reason: string): number {
   return meta.version;
 }
 
-/** Test and demo helper. Reseeds from the fixture, or from a supplied record. */
+/**
+ * Reseed. With no argument this clears the case back to empty, which is what
+ * the app boots with; tests pass a fixture to load the worked example.
+ */
 export function resetCase(seed?: CaseRecord): CaseRecord {
   const h = holder();
-  h.record = structuredClone(seed ?? demoCase);
+  h.record = seed ? structuredClone(seed) : emptyCase();
   return h.record;
 }

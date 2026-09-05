@@ -75,6 +75,43 @@ export const TOOLS = [
   {
     type: "function" as const,
     function: {
+      name: "record_party",
+      description:
+        "Record who is involved: the user (claimant) or who they are claiming against (respondent). Use this as soon as you learn a name — the claim form needs it and a fact is not enough. Call it again to add an address once you have one.",
+      parameters: {
+        type: "object",
+        properties: {
+          role: { type: "string", enum: ["claimant", "respondent"] },
+          name: { type: "string", description: "Full name of the person, or the registered name of the business." },
+          kind: { type: "string", enum: ["individual", "business", "unknown"], description: "Only say business if they told you it is one." },
+          address: { type: "string", description: "Their address, if given. Omit otherwise." },
+          inSingapore: { type: "boolean", description: "Only if they said so." },
+        },
+        required: ["role", "name"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "set_claim_type",
+      description: "Record what sort of dispute this is, once it is clear from what they have said.",
+      parameters: {
+        type: "object",
+        properties: {
+          category: {
+            type: "string",
+            enum: ["goods", "services", "goods_and_services", "other"],
+            description: "Use 'other' if it is not about something bought or a service paid for.",
+          },
+        },
+        required: ["category"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
       name: "read_documents",
       description:
         "Read passages from the user's uploaded files. Use this before asking about anything a document might already answer.",
@@ -104,6 +141,10 @@ export async function runTool(name: string, args: Record<string, unknown>): Prom
       return correctFact(args);
     case "note_unknown":
       return noteUnknown(args);
+    case "record_party":
+      return recordParty(args);
+    case "set_claim_type":
+      return setClaimType(args);
     case "read_documents":
       return readDocuments(args);
     default:
@@ -192,6 +233,54 @@ function correctFact(args: Record<string, unknown>): ToolResult {
   });
   bumpVersion(`assistant corrected ${factId}`);
   return { content: `Updated ${factId}.`, mutated: true };
+}
+
+function recordParty(args: Record<string, unknown>): ToolResult {
+  const role = args.role === "respondent" ? "respondent" : "claimant";
+  const name = String(args.name ?? "").trim();
+  if (!name) return { content: "A party needs a name.", mutated: false };
+
+  const kind = ["individual", "business", "unknown"].includes(String(args.kind))
+    ? (String(args.kind) as "individual" | "business" | "unknown")
+    : "unknown";
+  const address = typeof args.address === "string" && args.address.trim() ? args.address.trim() : null;
+
+  patchCase((draft) => {
+    const existing = draft.parties.find((p) => p.role === role);
+    if (existing) {
+      existing.name = name;
+      if (kind !== "unknown") existing.kind = kind;
+      if (address) existing.address = address;
+      if (typeof args.inSingapore === "boolean") existing.inSingapore = args.inSingapore;
+      // A business respondent needs a recent ACRA profile at filing (S3).
+      existing.acraProfileNeeded = existing.role === "respondent" && existing.kind === "business";
+    } else {
+      draft.parties.push({
+        id: `p_${role}`,
+        role,
+        name,
+        kind,
+        acraProfileNeeded: role === "respondent" && kind === "business",
+        address,
+        inSingapore: typeof args.inSingapore === "boolean" ? args.inSingapore : null,
+        notes: null,
+      });
+    }
+  });
+  bumpVersion(`assistant recorded ${role}`);
+  return { content: `Recorded the ${role} as ${name}. This now appears on the claim form.`, mutated: true };
+}
+
+function setClaimType(args: Record<string, unknown>): ToolResult {
+  const category = String(args.category);
+  if (!["goods", "services", "goods_and_services", "other"].includes(category)) {
+    return { content: `Unknown category ${category}.`, mutated: false };
+  }
+  patchCase((draft) => {
+    draft.case.claimCategory = category as typeof draft.case.claimCategory;
+  });
+  bumpVersion("assistant set claim type");
+  return { content: `Claim type set to ${category}.`, mutated: true };
 }
 
 function noteUnknown(args: Record<string, unknown>): ToolResult {

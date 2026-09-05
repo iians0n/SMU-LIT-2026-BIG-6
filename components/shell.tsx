@@ -10,7 +10,7 @@ import {
   FileArchive,
   FileSearch,
   FolderOpen,
-  Home,
+  LayoutGrid,
   Menu,
   MessagesSquare,
   Route,
@@ -23,16 +23,15 @@ import { useEffect, useRef, useState } from 'react';
 
 const primary = [
   ['/', 'Talk it through', MessagesSquare, ''],
-  ['/intake', 'Explain what happened', MessagesSquare, '1'],
-  ['/documents', 'Add documents', FolderOpen, '2'],
-  ['/chronology', 'Confirm the facts', UserRound, '3'],
-  ['/evidence', 'Review support', FileSearch, '4'],
-  ['/options', 'Choose a next step', Route, '5'],
-  ['/prepare', 'Prepare your pack', FileArchive, '6'],
+  ['/documents', 'Your documents', FolderOpen, '1'],
+  ['/chronology', 'Check the facts', UserRound, '2'],
+  ['/evidence', 'What your files show', FileSearch, '3'],
+  ['/options', 'Next steps', Route, '4'],
+  ['/prepare', 'Your pack', FileArchive, '5'],
 ] as const;
 
 const secondary = [
-  ['/dashboard', 'Case overview', Home],
+  ['/dashboard', 'Everything at once', LayoutGrid],
   ['/sources', 'Official sources', BookOpen],
   ['/verification', 'Verification record', ClipboardCheck],
 ] as const;

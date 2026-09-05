@@ -25,6 +25,7 @@ export interface ModelConfig {
   baseUrl: string;
   fastModel: string;
   heavyModel: string;
+  transcribeModel: string;
   configured: boolean;
 }
 
@@ -33,6 +34,7 @@ export function modelConfig(): ModelConfig {
     baseUrl: process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1",
     fastModel: process.env.OPENAI_MODEL_FAST ?? "gpt-4o-mini",
     heavyModel: process.env.OPENAI_MODEL ?? "gpt-4o",
+    transcribeModel: process.env.OPENAI_MODEL_TRANSCRIBE ?? "whisper-1",
     configured: Boolean(process.env.OPENAI_API_KEY),
   };
 }
@@ -242,6 +244,37 @@ export async function completeJson<T>(
   } catch (err) {
     throw new ModelUnavailableError(
       `${model} returned JSON that does not match the expected shape`,
+      err,
+    );
+  }
+}
+
+
+/**
+ * Speech to text.
+ *
+ * This sends the recording to the model provider, which is a real change from
+ * doing it in the browser: the audio leaves the device. FR01 requires the user
+ * to be told what happens to a recording BEFORE the microphone is activated, so
+ * the consent wording says so plainly rather than claiming it stays local.
+ *
+ * The audio is not retained by us. It is sent, transcribed, and dropped — only
+ * the text is kept, and the user edits that text before anything is recorded.
+ */
+export async function transcribeAudio(file: File): Promise<string> {
+  const cfg = modelConfig();
+  try {
+    const result = await client().audio.transcriptions.create({
+      file,
+      model: cfg.transcribeModel,
+      // Singapore English. Naming it improves accuracy on local names and
+      // amounts, which are the values most costly to get wrong.
+      language: "en",
+    });
+    return (result as unknown as { text?: string }).text?.trim() ?? "";
+  } catch (err) {
+    throw new ModelUnavailableError(
+      `${cfg.transcribeModel} could not transcribe that recording`,
       err,
     );
   }

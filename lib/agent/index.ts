@@ -11,6 +11,7 @@
 import { ModelUnavailableError, chatWithTools, modelConfig } from "@/lib/ai/client";
 import { getCase } from "@/lib/store";
 import { detectContradictions } from "@/lib/assessment/contradictions";
+import { deriveForm } from "@/lib/cjts/form";
 import { SYSTEM_PROMPT, caseContext } from "./prompt";
 import { TOOLS, runTool } from "./tools";
 
@@ -76,6 +77,18 @@ function summariseCase(): string {
   if (conflicts.length) {
     lines.push("Conflicts the rules have already found (raise these, do not invent others):");
     for (const c of conflicts) lines.push(`  - ${c.description}`);
+  }
+
+  // What the form still needs, so the conversation has a destination. Without
+  // it the assistant asks reasonable questions in no useful order.
+  const form = deriveForm(record);
+  if (form.outstanding.length) {
+    lines.push(
+      `Still needed for the claim form, roughly in this order: ${form.outstanding.join("; ")}.`,
+      "Work towards these, but follow the user rather than marching through the list. Never ask for the pre-filing assessment number - CJTS issues that.",
+    );
+  } else if (record.facts.length) {
+    lines.push("The claim form has everything it needs. Tell them so, and suggest they review it.");
   }
 
   return lines.length ? lines.join("\n") : "Nothing recorded yet. This is the start of the conversation.";

@@ -5,7 +5,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { CircleAlert, Mic, Paperclip, Send, Square } from 'lucide-react';
 import { useCase } from '@/components/case-provider';
 import { ViewState } from '@/components/view-state';
-import { NOT_A_LAWYER, ORIGIN_PLAIN } from '@/lib/plain-language';
+import { NOT_A_LAWYER } from '@/lib/plain-language';
+import type { DerivedForm } from '@/lib/cjts/form';
 
 interface Turn {
   role: 'user' | 'assistant';
@@ -16,25 +17,16 @@ interface Turn {
 const OPENER =
   "Hello. I'm here to help you get organised about your dispute.\n\nTell me what happened, in your own words. Don't worry about getting it in order or using the right terms — just start wherever makes sense to you.";
 
-interface SpeechLike extends EventTarget {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  start(): void;
-  stop(): void;
-  abort(): void;
-  onresult: ((event: {
-    resultIndex: number;
-    results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }>;
-  }) => void) | null;
-  onerror: ((event: { error: string }) => void) | null;
-}
-
-function speechCtor(): (new () => SpeechLike) | null {
-  if (typeof window === 'undefined') return null;
-  const browserWindow = window as unknown as Record<string, new () => SpeechLike>;
-  return browserWindow.SpeechRecognition ?? browserWindow.webkitSpeechRecognition ?? null;
-}
+/**
+ * Recording is done with MediaRecorder and transcribed by Whisper on the
+ * server, not by the browser's own speech engine.
+ *
+ * The trade is deliberate: it works in every browser rather than only Chrome,
+ * and handles Singapore accents and amounts far better — but the audio leaves
+ * the device, so the consent wording below has to say so. FR01 requires that
+ * before the microphone is activated, not after.
+ */
+type MicState = "idle" | "asking" | "recording" | "transcribing";
 
 function SetupNeeded() {
   return (
@@ -67,14 +59,17 @@ OPENAI_BASE_URL=https://api.openai.com/v1`}
 }
 
 function Chat() {
-  const { record, reload } = useCase();
+  const { reload } = useCase();
   const [turns, setTurns] = useState<Turn[]>([{ role: 'assistant', content: OPENER }]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [available, setAvailable] = useState<boolean | null>(null);
-  const [listening, setListening] = useState(false);
+  const [mic, setMic] = useState<MicState>("idle");
+  const [micConsent, setMicConsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const speech = useRef<SpeechLike | null>(null);
+  const [form, setForm] = useState<DerivedForm | null>(null);
+  const recorder = useRef<MediaRecorder | null>(null);
+  const chunks = useRef<Blob[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -95,7 +90,16 @@ function Chat() {
     endRef.current?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth' });
   }, [turns, busy]);
 
-  useEffect(() => () => speech.current?.abort(), []);
+  const refreshForm = useCallback(async () => {
+    const res = await fetch('/api/form', { cache: 'no-store' });
+    if (res.ok) setForm(await res.json());
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => { const run = refreshForm; if (!cancelled) await run(); })();
+    return () => { cancelled = true; };
+  }, [refreshForm]);
 
   const send = useCallback(async (text: string) => {
     const trimmed = text.trim();
@@ -114,43 +118,69 @@ function Chat() {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? 'The assistant could not reply.');
       setTurns([...next, { role: 'assistant', content: body.reply, actions: body.actions }]);
-      if (body.mutated) await reload();
+      if (body.mutated) await Promise.all([reload(), refreshForm()]);
     } catch (caught) {
+      // Their words stay on screen. A failed reply must not lose what they typed.
       setError(caught instanceof Error ? caught.message : 'The assistant could not reply.');
     } finally {
       setBusy(false);
     }
-  }, [turns, busy, reload]);
+  }, [turns, busy, reload, refreshForm]);
 
-  function toggleMic() {
-    if (listening) {
-      speech.current?.stop();
-      setListening(false);
-      return;
+  async function startRecording() {
+    setError(null);
+    setMic("asking");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      chunks.current = [];
+      const rec = new MediaRecorder(stream);
+      rec.ondataavailable = (e) => { if (e.data.size > 0) chunks.current.push(e.data); };
+      rec.onstop = async () => {
+        // Release the microphone as soon as we stop, not when the page closes.
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunks.current, { type: rec.mimeType || "audio/webm" });
+        chunks.current = [];
+        if (blob.size === 0) { setMic("idle"); return; }
+
+        setMic("transcribing");
+        try {
+          const form = new FormData();
+          form.append("audio", new File([blob], "answer.webm", { type: blob.type }));
+          const res = await fetch("/api/transcribe", { method: "POST", body: form });
+          const body = await res.json();
+          if (!res.ok) throw new Error(body.error ?? "That recording could not be read.");
+          if (body.empty) setError("We did not catch anything. Try again, or type it.");
+          // Into the box, not straight into the conversation: they read it and
+          // fix it before it counts as something they said.
+          else setDraft((d) => (d ? `${d} ${body.text}` : body.text));
+        } catch (e) {
+          setError(e instanceof Error ? e.message : "That recording could not be read.");
+        } finally {
+          setMic("idle");
+        }
+      };
+      rec.start();
+      recorder.current = rec;
+      setMic("recording");
+    } catch {
+      // A refused microphone is not a dead end: typing does everything.
+      setError("No microphone access, so speaking is off. You can type instead — nothing needs the microphone.");
+      setMic("idle");
     }
-    const Ctor = speechCtor();
-    if (!Ctor) {
-      setError('Speaking is not supported in this browser. You can type instead.');
-      return;
+  }
+
+  function stopRecording() {
+    recorder.current?.stop();
+    recorder.current = null;
+  }
+
+  function micButton() {
+    if (mic === "recording") return stopRecording();
+    if (mic === "idle") {
+      // Explained once, before the microphone is ever opened.
+      if (!micConsent) { setMicConsent(true); return; }
+      void startRecording();
     }
-    const recognition = new Ctor();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-SG';
-    recognition.onresult = (event) => {
-      let finalText = '';
-      for (let i = event.resultIndex; i < event.results.length; i += 1) {
-        if (event.results[i].isFinal) finalText += event.results[i][0].transcript;
-      }
-      if (finalText) setDraft((current) => (current ? `${current} ${finalText.trim()}` : finalText.trim()));
-    };
-    recognition.onerror = () => {
-      setError('The microphone stopped. You can type instead.');
-      setListening(false);
-    };
-    speech.current = recognition;
-    recognition.start();
-    setListening(true);
   }
 
   async function upload(files: FileList) {
@@ -163,7 +193,7 @@ function Chat() {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error);
       const names = body.results.map((result: { fileName: string }) => result.fileName).join(', ');
-      await reload();
+      await Promise.all([reload(), refreshForm()]);
       setBusy(false);
       await send(`I've added these files: ${names}. Please have a look at them.`);
     } catch (caught) {
@@ -175,8 +205,6 @@ function Chat() {
 
   if (available === null) return <div className="loading" role="status">Getting ready…</div>;
   if (available === false) return <SetupNeeded />;
-
-  const noted = record?.facts.filter((fact) => !fact.unknown && !fact.key.endsWith('_name')) ?? [];
 
   return (
     <div className="chat-layout">
@@ -201,7 +229,30 @@ function Chat() {
           <div ref={endRef} />
         </div>
 
-        <form className="chat-input" onSubmit={(event) => { event.preventDefault(); void send(draft); }}>
+        {micConsent && mic === 'idle' && (
+          <div className="mic-consent" role="dialog" aria-label="About recording">
+            <p style={{ margin: 0 }}>
+              <strong>Before you speak.</strong> Your recording is sent to our speech provider to be
+              turned into text, then discarded. We keep only the text, and it goes into the box
+              below for you to read and correct before you send it.
+            </p>
+            <div className="chat-buttons" style={{ justifyContent: 'flex-start', marginTop: 12 }}>
+              <button type="button" className="chat-send" onClick={() => { setMicConsent(false); void startRecording(); }}>
+                Start recording
+              </button>
+              <button type="button" className="chat-icon" style={{ width: 'auto', padding: '0 18px' }} onClick={() => setMicConsent(false)}>
+                Not now
+              </button>
+            </div>
+          </div>
+        )}
+        {mic === 'recording' && <div className="mic-live" role="status">● Recording — press the square to stop</div>}
+        {mic === 'transcribing' && <div className="mic-live" role="status">Turning your words into text…</div>}
+
+        <form
+          className="chat-input"
+          onSubmit={(event) => { event.preventDefault(); void send(draft); }}
+        >
           <textarea
             name="message"
             autoComplete="off"
@@ -233,8 +284,14 @@ function Chat() {
             <button type="button" className="chat-icon" onClick={() => fileInput.current?.click()} disabled={busy} aria-label="Add a document">
               <Paperclip size={22} aria-hidden="true" />
             </button>
-            <button type="button" className={`chat-icon ${listening ? 'on' : ''}`} onClick={toggleMic} disabled={busy} aria-label={listening ? 'Stop speaking' : 'Speak your answer'}>
-              {listening ? <Square size={20} aria-hidden="true" /> : <Mic size={22} aria-hidden="true" />}
+            <button
+              type="button"
+              className={`chat-icon ${mic === 'recording' ? 'on' : ''}`}
+              onClick={micButton}
+              disabled={busy || mic === 'transcribing' || mic === 'asking'}
+              aria-label={mic === 'recording' ? 'Stop recording' : 'Speak your answer'}
+            >
+              {mic === 'recording' ? <Square size={20} aria-hidden="true" /> : <Mic size={22} aria-hidden="true" />}
             </button>
             <button type="submit" className="chat-send" disabled={busy || !draft.trim()}>
               <Send size={20} aria-hidden="true" /> Send
@@ -245,27 +302,53 @@ function Chat() {
       </div>
 
       <aside className="chat-side">
-        <h2>What we have so far</h2>
-        {noted.length === 0 ? (
-          <p className="muted">Nothing yet. It will fill in as you talk.</p>
+        <div className="row" style={{ alignItems: 'baseline' }}>
+          <h2 style={{ margin: 0 }}>Your claim form</h2>
+          <span className="small muted">{form ? `${form.filled} of ${form.total}` : ''}</span>
+        </div>
+        <p className="small muted" style={{ margin: '4px 0 14px' }}>
+          Fills in as we talk. Nothing goes in without something to point at.
+        </p>
+
+        {!form ? (
+          <p className="muted">Loading…</p>
         ) : (
-          <ul className="chat-noted">
-            {noted.slice(-8).reverse().map((fact) => (
-              <li key={fact.id}>
-                <span>{fact.label}</span>
-                <em>{ORIGIN_PLAIN[fact.origin]}</em>
-              </li>
-            ))}
-          </ul>
+          form.groups.map((group) => (
+            <div key={group.name} className="form-group">
+              <h3>{group.name}</h3>
+              {group.fields.map((f) => (
+                <div key={f.key} className={`form-field form-${f.status}`}>
+                  <span className="form-label">
+                    {f.label}
+                    {f.required && f.status !== 'filled' && <em> · needed</em>}
+                  </span>
+                  {f.status === 'filled' && (
+                    <>
+                      <strong>{f.value}</strong>
+                      <span className="form-source">from {f.source}</span>
+                    </>
+                  )}
+                  {f.status === 'unconfirmed' && (
+                    <>
+                      <strong>{f.value}</strong>
+                      <span className="form-source">waiting for you to confirm this</span>
+                    </>
+                  )}
+                  {f.status === 'missing' && <span className="form-help">{f.help}</span>}
+                  {f.status === 'from_cjts' && <span className="form-help">{f.help}</span>}
+                </div>
+              ))}
+            </div>
+          ))
         )}
+
         <div className="side-rule" style={{ margin: '18px 0' }} />
         <p className="small muted">
-          Nothing here is final. You can check and change all of it on{' '}
-          <Link href="/chronology">the review page</Link>, and see what your files back up on{' '}
-          <Link href="/evidence">the evidence page</Link>.
+          Check and change everything on <Link href="/chronology">the review page</Link>, then see
+          what your files back up on <Link href="/evidence">the evidence page</Link>.
         </p>
-        <Link className="guide-secondary" style={{ marginTop: 14 }} href="/dashboard">
-          See everything at once
+        <Link className="guide-secondary" style={{ marginTop: 12 }} href="/prepare">
+          Open the full pack
         </Link>
       </aside>
     </div>

@@ -9,13 +9,14 @@ import { POST as verification,GET as log } from '@/app/api/verification/route';
 import { POST as tasks } from '@/app/api/tasks/route';
 import type { Case } from '@/lib/dashboard/contracts';
 import { resetCase } from '@/lib/store';
+import { demoCase } from '@/fixtures/case.demo';
 
 const url='http://localhost:3000';
 function req(path:string,cookie='',body?:unknown){return new Request(url+path,{method:body===undefined?'GET':'POST',headers:{cookie,'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});}
 async function setup(){const response=await session(req('/api/session','',{}));const cookie=response.headers.get('set-cookie')!.split(';')[0];const r=await getCase(req('/api/case',cookie),{params:Promise.resolve({})});return {cookie,c:await r.json() as Case};}
 
 describe('session scoped API and working export',()=>{
- beforeEach(()=>resetCase());
+ beforeEach(()=>resetCase(demoCase));
  it('requires a session and denies access to another case id including exports',async()=>{expect((await drafts(req('/api/drafts'))).status).toBe(401);const {cookie,c}=await setup();expect((await drafts(req('/api/drafts?caseId=another-case',cookie))).status).toBe(404);expect((await exportPack(req('/api/export?caseId=another-case',cookie,{version:c.version}))).status).toBe(404);});
  it('rejects cross-origin writes',async()=>{const request=new Request(url+'/api/session',{method:'POST',headers:{origin:'https://attacker.example'}});expect((await session(request)).status).toBe(403);});
  it('exports a real zip with separated narrative notes and verification, and supports retry',async()=>{const {c,cookie}=await setup();for(let n=0;n<2;n++){const r=await exportPack(req('/api/export',cookie,{version:c.version,kind:'pack'}));expect(r.status).toBe(200);const zip=await JSZip.loadAsync(await r.arrayBuffer());expect(Object.keys(zip.files)).toContain('claim-summary.txt');expect(Object.keys(zip.files)).toContain('preparation-notes.txt');expect(Object.keys(zip.files)).toContain('verification-record.json');expect(await zip.file('claim-summary.txt')!.async('string')).toContain('not established whether');expect(await zip.file('worksheet.txt')!.async('string')).toContain('[MISSING]');}const record=await getCase(req('/api/case',cookie),{params:Promise.resolve({})});expect((await record.json()).currentStage).toBe(c.currentStage);});
