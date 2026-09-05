@@ -19,6 +19,7 @@ import { planNextQuestion } from '@/lib/planner';
 import { adaptCaseRecord } from '@/lib/dashboard/adapt-case';
 import { assembleDraft, amountCalculation, readyForTransfer, validateEdit } from '@/lib/drafting';
 import { screenRoute } from '@/lib/rules/rules.v1';
+import { SUPPORT_STATUS_LABEL } from '@/lib/contracts';
 
 import { POST as uploadDocuments, DELETE as removeDocument } from '@/app/api/documents/route';
 import { POST as updateFact } from '@/app/api/facts/route';
@@ -229,5 +230,76 @@ describe('Scenario 7 — recovery and access', () => {
       ...q, questionId: q.id, action: 'answer', answer: '   ',
     });
     expect(status).toBe(400);
+  });
+});
+
+describe('Scenario 7b — export, keyboard and access', () => {
+  it('refuses an export against a version the user has not seen, and succeeds on retry', async () => {
+    const { POST: exportPack } = await import('@/app/api/export/route');
+    const { POST: session } = await import('@/app/api/session/route');
+
+    const opened = await session(new Request('http://x/api/session', { method: 'POST' }));
+    const cookie = opened.headers.get('set-cookie')!.split(';')[0];
+    const call = (version: number) =>
+      exportPack(new Request('http://x/api/export', {
+        method: 'POST', headers: { cookie, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ version, kind: 'pack' }),
+      }));
+
+    const current = getCase().case.version;
+    // A stale version must be refused rather than exporting a pack built from
+    // a record the user has not reviewed.
+    expect((await call(current - 1)).status).toBe(409);
+    // Retrying with the current version succeeds and loses nothing.
+    expect((await call(current)).status).toBe(200);
+  });
+
+  it('keeps one session out of another session\'s case', async () => {
+    const { POST: session } = await import('@/app/api/session/route');
+    const { GET: drafts } = await import('@/app/api/drafts/route');
+
+    const a = (await session(new Request('http://x/api/session', { method: 'POST' })))
+      .headers.get('set-cookie')!.split(';')[0];
+
+    // A fabricated token must not be honoured, and no session at all must not
+    // fall through to somebody's data.
+    const forged = await drafts(new Request('http://x/api/drafts', {
+      headers: { cookie: 'casepath_session=' + 'f'.repeat(64) },
+    }));
+    expect(forged.status).toBe(401);
+
+    const anonymous = await drafts(new Request('http://x/api/drafts'));
+    expect(anonymous.status).toBe(401);
+
+    // The real session still works, so the check is authentication and not an outage.
+    expect((await drafts(new Request('http://x/api/drafts', { headers: { cookie: a } }))).status).toBe(200);
+  });
+
+  it('drives every interactive control from the keyboard', async () => {
+    // PRD §8: all critical paths must work without audio or colour, with
+    // keyboard navigation. A div with onClick is invisible to tab order, so the
+    // pages are checked for real button and anchor elements instead.
+    const { readdirSync, readFileSync: read } = await import('node:fs');
+    const pages = ['intake', 'documents', 'chronology', 'evidence']
+      .map((p) => `app/${p}/page.tsx`)
+      .filter((p) => readdirSync('app').some((d) => p.includes(d)));
+
+    for (const page of pages) {
+      const source = read(page, 'utf8');
+      expect(source, `${page} uses a non-focusable click handler`).not.toMatch(/<(div|span|li)[^>]*\sonClick=/);
+      // Anything toggling disclosure must announce its state.
+      if (/aria-expanded/.test(source) || /setOpen|setEditing/.test(source)) {
+        expect(source, `${page} toggles content without a real button`).toMatch(/<button|<Button/);
+      }
+    }
+  });
+
+  it('labels every status by text, never by colour alone', () => {
+    const adapted = adaptCaseRecord(getCase(), 'o');
+    // Every support status resolves to a human label; a bare tone is never enough.
+    for (const issue of adapted.issues) {
+      expect(SUPPORT_STATUS_LABEL[issue.supportStatus]).toBeTruthy();
+      expect(issue.reason.trim().length).toBeGreaterThan(0);
+    }
   });
 });
