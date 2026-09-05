@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { CircleAlert, Mic, Paperclip, RotateCcw, Send, Square } from 'lucide-react';
+import { ArrowRight, CheckCircle2, CircleAlert, Mic, Paperclip, RotateCcw, Send, Square } from 'lucide-react';
 import { useCase } from '@/components/case-provider';
 import { ViewState } from '@/components/view-state';
 import { NOT_A_LAWYER } from '@/lib/plain-language';
@@ -13,10 +13,11 @@ interface Turn {
   role: 'user' | 'assistant';
   content: string;
   actions?: string[];
+  nextSteps?: Array<{ label: string; href: '/chronology' | '/evidence' | '/prepare' }>;
 }
 
 const OPENER =
-  "Hello. I'm here to help you get organised about your dispute.\n\nTell me what happened, in your own words. Don't worry about getting it in order or using the right terms — just start wherever makes sense to you.";
+  "Let's fill this quickly. In one message, send: your full name, ID, contact and address; the other side's name, whether they are a person or business, and their address; what you bought or agreed, the amount you are claiming, the exact date involved, what went wrong, and what you want.\n\nUse any order. If you do not know something, say so and I will set it aside.";
 
 /**
  * Recording is done with MediaRecorder and transcribed by Whisper on the
@@ -157,7 +158,7 @@ function Chat() {
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? 'The assistant could not reply.');
-      setTurns([...next, { role: 'assistant', content: body.reply, actions: body.actions }]);
+      setTurns([...next, { role: 'assistant', content: body.reply, actions: body.actions, nextSteps: body.nextSteps }]);
       if (body.mutated) await Promise.all([reload(), refreshForm()]);
     } catch (caught) {
       // Their words stay on screen. A failed reply must not lose what they typed.
@@ -204,7 +205,7 @@ function Chat() {
       const reply = await chat.json();
       if (!chat.ok) throw new Error(reply.error ?? 'The assistant could not reply.');
 
-      const after: Turn[] = [...next, { role: 'assistant', content: reply.reply, actions: reply.actions }];
+      const after: Turn[] = [...next, { role: 'assistant', content: reply.reply, actions: reply.actions, nextSteps: reply.nextSteps }];
       setTurns(after);
       turnsRef.current = after;
       if (reply.mutated) await Promise.all([reload(), refreshForm()]);
@@ -305,6 +306,15 @@ function Chat() {
               {turn.actions?.map((action) => (
                 <span key={action} className="bubble-action">{action}</span>
               ))}
+              {turn.nextSteps?.length ? (
+                <div className="bubble-next-steps" aria-label="What to do next">
+                  {turn.nextSteps.map((step) => (
+                    <Link key={step.href} href={step.href} className="bubble-next-step">
+                      {step.label}<ArrowRight size={17} aria-hidden="true" />
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ))}
           {busy && <div className="bubble bubble-assistant bubble-thinking">Thinking…</div>}
@@ -438,6 +448,18 @@ function Chat() {
             aria-label={`${form.filled} of ${form.total} fields filled`}
           >
             <span style={{ width: `${form.total ? (form.filled / form.total) * 100 : 0}%` }} />
+          </div>
+        )}
+
+        {form && form.outstanding.length === 0 && (
+          <div className="form-complete-card">
+            <div className="form-complete-title">
+              <CheckCircle2 size={18} aria-hidden="true" /> Details collected
+            </div>
+            <p>Review the result, check your files, then download the PDF for your CJTS handoff.</p>
+            <Link href="/chronology">Review details <ArrowRight size={15} aria-hidden="true" /></Link>
+            <Link href="/evidence">Check evidence <ArrowRight size={15} aria-hidden="true" /></Link>
+            <Link href="/prepare">Download PDF <ArrowRight size={15} aria-hidden="true" /></Link>
           </div>
         )}
 

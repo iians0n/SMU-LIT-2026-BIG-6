@@ -106,38 +106,6 @@ const RULES: Rule[] = [
     whyItMatters:
       "How you paid decides what record exists. A bank transfer leaves one; cash usually does not.",
   },
-  {
-    topic: "loss",
-    reason: "unsupported",
-    outstanding: (r) =>
-      r.facts.some((f) => f.kind === "loss" && f.excerptIds.length === 0 && !f.unknown),
-    question: "For the amount you say you are out of pocket, what records do you have?",
-    whyItMatters:
-      "At the moment this rests on your account alone. A receipt or bank record would let you show it rather than assert it.",
-  },
-  {
-    topic: "attempted_resolution",
-    reason: "missing",
-    outstanding: (r) => !r.facts.some((f) => f.kind === "attempted_resolution"),
-    question: "What have you already asked the other side to do about this?",
-    whyItMatters:
-      "The process expects parties to have tried to sort things out, and it affects which next steps are open to you.",
-  },
-  {
-    topic: "other_party_response",
-    reason: "missing",
-    outstanding: (r) => !r.facts.some((f) => f.kind === "other_party_response"),
-    question: "What has the other side said about the problem?",
-    whyItMatters:
-      "Knowing their account now means you can prepare for it, rather than meeting it for the first time at a hearing.",
-  },
-  {
-    topic: "desired_outcome",
-    reason: "missing",
-    outstanding: (r) => !r.facts.some((f) => f.kind === "desired_outcome"),
-    question: "What outcome would put this right for you?",
-    whyItMatters: "What you are asking for shapes the whole claim, including the amount.",
-  },
 ];
 
 /** Topics the user has already answered, skipped, or said they do not know. */
@@ -165,8 +133,8 @@ export function unresolvedTopics(record: CaseRecord): TopicState[] {
 /**
  * The next question, or null when there is nothing worth asking.
  *
- * One at a time, on purpose. A form of nine questions invites skimming; a single
- * question with its reason attached invites an answer.
+ * The fallback planner covers only four form-essential topics. Optional case
+ * background is collected later, if useful, rather than extending the intake.
  */
 export function planNextQuestion(record: CaseRecord): PlannedQuestion | null {
   const aside = setAside(record);

@@ -590,6 +590,25 @@ textarea.field, input.field { margin-top: 6px; }
   border-top: 1px dashed var(--line);
   font-size: 0.97rem; color: var(--muted, #5b6472);
 }
+.bubble-next-steps {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+.bubble-next-step {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--green, #0f766e);
+  font-size: 0.98rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.bubble-next-step:hover { background: rgba(15, 118, 110, 0.07); }
 
 .chat-input {
   border: 2px solid var(--line);
@@ -712,6 +731,32 @@ textarea.field, input.field { margin-top: 6px; }
   border-radius: 99px;
   background: var(--green, #0f766e);
   transition: width 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.form-complete-card {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 18px;
+  padding: 13px;
+  border: 1px solid rgba(21, 128, 61, 0.35);
+  border-radius: 10px;
+  background: rgba(21, 128, 61, 0.07);
+}
+.form-complete-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #15803d;
+  font-weight: 750;
+}
+.form-complete-card p { margin: 0; font-size: 0.9rem; line-height: 1.45; }
+.form-complete-card a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--green, #0f766e);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
 }
 
 .form-just {

@@ -12,6 +12,7 @@ import { ModelUnavailableError, chatWithTools, modelConfig } from "@/lib/ai/clie
 import { getCase } from "@/lib/store";
 import { detectContradictions } from "@/lib/assessment/contradictions";
 import { deriveForm } from "@/lib/cjts/form";
+import { planIntakeProgress, type IntakeNextStep } from "./intake";
 import { SYSTEM_PROMPT, caseContext } from "./prompt";
 import { TOOLS, runTool } from "./tools";
 
@@ -26,10 +27,12 @@ export interface TurnResult {
   mutated: boolean;
   /** Named for the transcript so a user can see what the assistant did, not just what it said. */
   actions: string[];
+  /** Direct destinations shown only after the intake has ended. */
+  nextSteps: IntakeNextStep[];
 }
 
-/** Enough for read-then-record-then-reply. Beyond this it is looping, not working. */
-const MAX_TOOL_ROUNDS = 5;
+/** Enough for read-then-record. A normal answer returns after one model call. */
+const MAX_TOOL_ROUNDS = 3;
 
 /**
  * What the assistant already knows, so it does not ask about it.
@@ -84,11 +87,11 @@ function summariseCase(): string {
   const form = deriveForm(record);
   if (form.outstanding.length) {
     lines.push(
-      `Still needed for the claim form, roughly in this order: ${form.outstanding.join("; ")}.`,
-      "Work towards these, but follow the user rather than marching through the list. Never ask for the pre-filing assessment number - CJTS issues that.",
+      `Still needed for the claim form: ${form.outstanding.join("; ")}.`,
+      "Extract every supplied item now. After saving, the app will group all remaining fields into one short follow-up. Never ask for the pre-filing assessment number - CJTS issues that.",
     );
   } else if (record.facts.length) {
-    lines.push("The claim form has everything it needs. Tell them so, and suggest they review it.");
+    lines.push("The claim form has everything it needs. Do not ask another intake question.");
   }
 
   return lines.length ? lines.join("\n") : "Nothing recorded yet. This is the start of the conversation.";
@@ -114,7 +117,12 @@ export async function runTurn(history: ChatMessage[]): Promise<TurnResult> {
   let mutated = false;
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    const { message } = await chatWithTools({ messages, tools: TOOLS as unknown as unknown[], tier: "heavy" });
+    const { message } = await chatWithTools({
+      messages,
+      tools: TOOLS as unknown as unknown[],
+      tier: "fast",
+      maxTokens: 1800,
+    });
     messages.push(message);
 
     const calls = (message.tool_calls ?? []) as Array<{
@@ -123,8 +131,11 @@ export async function runTurn(history: ChatMessage[]): Promise<TurnResult> {
     }>;
 
     if (calls.length === 0) {
-      return { reply: message.content?.trim() ?? "", mutated, actions };
+      return { reply: message.content?.trim() ?? "", mutated, actions, nextSteps: [] };
     }
+
+    const readDocuments = calls.some((call) => call.function.name === "read_documents");
+    let changedThisRound = false;
 
     for (const call of calls) {
       let args: Record<string, unknown> = {};
@@ -138,6 +149,7 @@ export async function runTurn(history: ChatMessage[]): Promise<TurnResult> {
 
       const result = await runTool(call.function.name, args);
       mutated = mutated || result.mutated;
+      changedThisRound = changedThisRound || result.mutated;
       if (result.mutated) {
         // Every tool needs its own line here. The fallback used to catch
         // record_party and set_claim_type and label both "Recorded as not
@@ -154,6 +166,21 @@ export async function runTurn(history: ChatMessage[]): Promise<TurnResult> {
       }
       messages.push({ role: "tool", tool_call_id: call.id, content: result.content });
     }
+
+    // A document read needs one more model pass so its contents can be used.
+    // Ordinary intake answers stop here: rules generate the grouped follow-up,
+    // saving a second (previously heavy-model) round trip on every answer.
+    if (changedThisRound && !readDocuments) {
+      const intake = planIntakeProgress(getCase());
+      const compactActions =
+        actions.length > 3 ? [`Saved ${actions.length} details to your worksheet`] : actions;
+      return {
+        reply: intake.reply,
+        mutated,
+        actions: compactActions,
+        nextSteps: intake.nextSteps,
+      };
+    }
   }
 
   // Ran out of rounds. Say so rather than returning silence.
@@ -162,5 +189,6 @@ export async function runTurn(history: ChatMessage[]): Promise<TurnResult> {
       "Sorry — I got tangled up there. Could you tell me that again, or ask me something more specific?",
     mutated,
     actions,
+    nextSteps: [],
   };
 }

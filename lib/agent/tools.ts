@@ -67,6 +67,18 @@ export const TOOLS = [
         properties: {
           topic: { type: "string", description: "What they were asked about." },
           question: { type: "string", description: "The question you asked." },
+          formFields: {
+            type: "array",
+            items: {
+              type: "string",
+              enum: [
+                "claimant_name", "claimant_id", "claimant_contact", "claimant_address",
+                "respondent_name", "respondent_type", "respondent_address", "claim_type",
+                "goods_or_service", "claim_amount", "claim_date", "claim_summary",
+              ],
+            },
+            description: "Exact preparation-worksheet fields the user said were unknown or should be skipped.",
+          },
         },
         required: ["topic", "question"],
       },
@@ -77,7 +89,7 @@ export const TOOLS = [
     function: {
       name: "record_party",
       description:
-        "Record who is involved: the user (claimant) or who they are claiming against (respondent). Use this as soon as you learn a name — the claim form needs it and a fact is not enough. Call it again to add an address once you have one.",
+        "Record who is involved: the user (claimant) or who they are claiming against (respondent). Include every supplied detail in one call per party. Use this as soon as you learn a name — the claim form needs it and a fact is not enough.",
       parameters: {
         type: "object",
         properties: {
@@ -295,11 +307,16 @@ function noteUnknown(args: Record<string, unknown>): ToolResult {
   const now = new Date().toISOString();
   const id = `q_a_${Date.now().toString(36)}`;
   patchCase((draft) => {
+    const formFields = Array.isArray(args.formFields)
+      ? args.formFields.filter((field): field is string => typeof field === "string")
+      : [];
     draft.openQuestions.push({
       id,
       topic: "events",
       question: String(args.question ?? "").trim() || "(not recorded)",
-      whyItMatters: String(args.topic ?? ""),
+      whyItMatters: formFields.length
+        ? `Form fields set aside: ${formFields.join(",")}`
+        : String(args.topic ?? ""),
       status: "dont_know",
       answeredFactId: null,
       askedAt: now,

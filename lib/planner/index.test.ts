@@ -80,6 +80,31 @@ describe("planNextQuestion", () => {
     assert.ok(guard < 50, "took an unreasonable number of questions to finish");
   });
 
+  it("keeps the fallback intake to four form-essential topics", () => {
+    const record = clone();
+    record.openQuestions = [];
+    record.parties = [];
+    record.facts = [];
+    const asked = new Set<string>();
+
+    for (let i = 0; i < 10; i++) {
+      const q = planNextQuestion(record);
+      if (!q) break;
+      asked.add(q.topic);
+      record.openQuestions.push({
+        id: q.id,
+        topic: q.topic,
+        question: q.question,
+        whyItMatters: q.whyItMatters,
+        status: "skipped",
+        answeredFactId: null,
+        askedAt: null,
+      });
+    }
+
+    assert.deepEqual([...asked], ["parties", "agreement", "promised_performance", "payment"]);
+  });
+
   it("treats a skipped or unknown answer as resolved for questioning purposes", () => {
     const record = clone();
     record.openQuestions = record.openQuestions.map((q) => ({ ...q, status: "dont_know" as const }));

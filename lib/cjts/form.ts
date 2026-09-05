@@ -256,13 +256,28 @@ const SPECS: Spec[] = [
     required: true,
     help: "The Money Order value. Added up from what you paid and what it cost you, less anything refunded.",
     derive: (r) => {
+      // If the user gave the amount they actually want to claim, that is the
+      // form value. It may legitimately be lower than what they paid; deriving
+      // it from the purchase price would silently overwrite their instruction.
+      const requested = factOf(r, "desired_outcome");
+      if (requested?.amount && requested.amount.minorUnits > 0) {
+        return {
+          value: formatMoney(requested.amount),
+          source: "the amount you said you are claiming",
+          confirmed: settled(requested),
+        };
+      }
+
       // Built from components so the figure can be traced, and left empty when
       // they do not reconcile rather than guessed at.
-      const parts = r.facts.filter(
+      const moneyFacts = r.facts.filter(
         (f) => (f.kind === "payment" || f.kind === "loss") && f.amount && !f.unknown,
       );
+      // Only an actual money fact phrased as a refund reduces the fallback
+      // amount, and it must not also be counted once as a positive payment.
+      const refunds = moneyFacts.filter((f) => /\b(refund|refunded|repaid)\b/i.test(f.statement));
+      const parts = moneyFacts.filter((f) => !refunds.includes(f));
       if (parts.length === 0) return null;
-      const refunds = r.facts.filter((f) => f.amount && /\brefund/i.test(f.statement));
       const total =
         parts.reduce((s, f) => s + (f.amount?.minorUnits ?? 0), 0) -
         refunds.reduce((s, f) => s + (f.amount?.minorUnits ?? 0), 0);
