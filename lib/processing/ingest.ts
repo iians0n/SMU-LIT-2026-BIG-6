@@ -25,6 +25,7 @@ import {
 import { extract, type ExtractedTextItem } from "./extract";
 import { ocrImage } from "./ocr";
 import { scanForInjection } from "./envelope";
+import { proposeLabel } from "./label";
 
 const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png"]);
 
@@ -239,6 +240,8 @@ export async function ingestDocument(
   }
 
   const injectionFindings = excerpts.flatMap((e) => scanForInjection(e.text));
+  // Proposed only. The user can override it, and nothing downstream reads it.
+  const proposal = proposeLabel(fileName, excerpts.map((e) => e.text).join("\n"));
 
   const verificationEvents: VerificationEvent[] = [
     {
@@ -257,7 +260,7 @@ export async function ingestDocument(
   ];
 
   return {
-    document: { ...base, issues, pageCount },
+    document: { ...base, issues, pageCount, proposedLabel: proposal?.label ?? null },
     excerpts,
     verificationEvents,
     injectionFindings,

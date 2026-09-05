@@ -58,6 +58,30 @@ describe('Scenario 1 — complete goods or services dispute', () => {
   });
 });
 
+describe('Scenario 1b — the amount is calculated, not echoed', () => {
+  it('builds the total from confirmed components rather than the figure asked for', () => {
+    const adapted = adaptCaseRecord(getCase(), 'o');
+    const calc = amountCalculation(adapted);
+    // Every entry must be a real component - what she paid, what it cost her -
+    // so the calculation is capable of disagreeing with the ask. Sourcing it
+    // from desired_outcome made it echo her figure and never dissent.
+    expect(calc.entries.length).toBeGreaterThan(1);
+    expect(calc.entries.every((e) => e.key === 'claim_component_cents' || e.key === 'refund_cents')).toBe(true);
+    expect(calc.total).toBe(calc.entries.reduce((s, e) => s + (e.key === 'refund_cents' ? -1 : 1) * Number(e.value), 0));
+  });
+
+  it('leaves the total blank when a component is unconfirmed', () => {
+    resetCase(adverseCase);
+    const adapted = adaptCaseRecord(getCase(), 'o');
+    // The adverse case has a S$300 payment and a S$400 refund neither of which
+    // she has confirmed. Guessing past that would be the tool settling her
+    // claim for her.
+    expect(amountCalculation(adapted).total).toBeNull();
+    const draft = assembleDraft(adapted, adapted.contradictions);
+    expect(draft.fields.find((f) => f.id === 'total')?.value).toBe('');
+  });
+});
+
 describe('Scenario 2 — missing and poor-quality evidence', () => {
   it('leaves gaps visible without blocking access to the summary', async () => {
     const result = await upload('handwritten-note.jpg', 'corrupted-scan.pdf');

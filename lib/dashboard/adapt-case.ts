@@ -1,11 +1,30 @@
 import type { CaseRecord, DocumentIssue, Fact as SharedFact } from '@/lib/contracts';
 import type { Case, Document, Fact, SourceRef } from './contracts';
 
+/**
+ * The amount calculation has to be built from what the record shows, not from
+ * what the user is asking for.
+ *
+ * desired_outcome used to map to claim_component_cents, so the "calculation"
+ * simply echoed the figure the claimant named and could never disagree with it.
+ * FR08 wants an amount traceable to confirmed facts, and the whole point of
+ * showing a calculation is that it can come out different from the ask - which
+ * is exactly what happens on the adverse case, where a refund the claimant did
+ * not mention means the two no longer reconcile.
+ *
+ * Components are what she paid and what it cost her; refunds come back off.
+ */
+const REFUND=/\brefund(ed|s)?\b/i;
 const factKey=(fact:SharedFact,index:number)=>{
  if(fact.kind==='agreement')return 'agreement';
- if(fact.kind==='desired_outcome')return 'claim_component_cents';
  if(fact.kind==='promised_performance')return 'completion_date';
  if(fact.kind==='event'&&fact.statement.toLowerCase().includes('not finish'))return 'alleged_failure';
+ // Before the refund test: "Refund of S$2,000 plus S$500" is what she is
+ // ASKING for, not money she received, and treating it as one cancelled the
+ // whole claim out to zero.
+ if(fact.kind==='desired_outcome')return 'requested_amount_cents';
+ if(fact.amount&&REFUND.test(fact.statement))return 'refund_cents';
+ if(fact.amount&&(fact.kind==='payment'||fact.kind==='loss'))return 'claim_component_cents';
  return `${fact.kind}_${index}`;
 };
 const issueStatus=(issues:DocumentIssue[]):Document['processingStatus']=>{

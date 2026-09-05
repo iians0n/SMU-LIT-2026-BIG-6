@@ -102,12 +102,12 @@ Data-first order. Each step should put something on screen.
 
 Not duplicated here — see [clarence.md](clarence.md). High-level only so we can see the whole board:
 
-- [ ] M1 app shell + stage nav + `components/ui/` + source library + `rules.v1.ts`
-- [ ] M2 overview page + FR06 route screening
-- [ ] M3 FR07 options/tasks + FR09 grounding gate + FR11 verification store
-- [ ] M4 FR08 drafts, worksheet, export, CJTS checklist
+- [x] M1 app shell + stage nav + `components/ui/` + source library + `rules.v1.ts`
+- [x] M2 overview page + FR06 route screening
+- [x] M3 FR07 options/tasks + FR09 grounding gate + FR11 verification store
+- [x] M4 FR08 drafts, worksheet, export, CJTS checklist
 
-**Clarence's only hard block is `fixtures/case.demo.json`.** It ships in Hour 0 above.
+All four verified present and building after the merge. Two defects found and fixed in his files along the way — see the commits for `readyForTransfer` and `amountCalculation`.
 
 ---
 
