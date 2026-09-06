@@ -37,6 +37,10 @@ interface Turn {
 const OPENER =
   "Let's get your claim ready. Tell me these basics in one message:\n\n• About you: name, ID, contact and address\n• Other side: name, person or business, and address\n• What happened: what you agreed, amount claimed, date, problem and what you want\n\nUse any order. Say “I don't know” for anything you do not have.";
 
+function clock(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
 function formGroupName(name: string): string {
   if (name.startsWith('A.')) return 'About you';
   if (name.startsWith('B.')) return 'Other side';
@@ -109,9 +113,10 @@ function Chat() {
   /** Keys that changed on the last refresh, so they can flash as they land. */
   const [justFilled, setJustFilled] = useState<Set<string>>(new Set());
   const previousForm = useRef<Map<string, string>>(new Map());
-  /** Hands-free: talk, pause, and the turn sends itself. */
+  /** Push-to-talk: recording runs from the Speak press to the Stop press. */
   const [live, setLive] = useState(false);
   const [level, setLevel] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
   const session = useRef<LiveSession | null>(null);
   /** The privacy explanation is shown once; later presses can start immediately. */
   const micConsentGiven = useRef(false);
@@ -140,6 +145,15 @@ function Chat() {
   useEffect(() => {
     turnsRef.current = turns;
   }, [turns]);
+
+  // A running clock while recording. Nothing depends on it, but with no fixed
+  // end to the take it is the only sign of how much has been captured.
+  useEffect(() => {
+    if (!live) return;
+    const startedAt = Date.now();
+    const id = window.setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 250);
+    return () => window.clearInterval(id);
+  }, [live]);
 
   const refreshForm = useCallback(async () => {
     const res = await fetch('/api/form', { cache: 'no-store' });
@@ -173,14 +187,20 @@ function Chat() {
     return () => { cancelled = true; };
   }, [refreshForm]);
 
-  const send = useCallback(async (text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed || busy) return;
-    // A typed/upload turn also closes any open microphone before the reply.
+  /** Close an open microphone and throw away what it captured. */
+  const discardListening = useCallback(() => {
     session.current?.stop();
     session.current = null;
     setLive(false);
     setLevel(0);
+  }, []);
+
+  const send = useCallback(async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || busy) return;
+    // A typed or uploaded turn answers the question instead, so a half-finished
+    // recording is abandoned rather than arriving on top of it.
+    discardListening();
     const next: Turn[] = [...turns, { role: 'user', content: trimmed }];
     setTurns(next);
     setDraft('');
@@ -202,22 +222,18 @@ function Chat() {
     } finally {
       setBusy(false);
     }
-  }, [turns, busy, reload, refreshForm]);
+  }, [turns, busy, reload, refreshForm, discardListening]);
 
   /**
    * Transcribe one spoken turn and answer it.
    *
    * The result goes straight into the conversation rather than into the input
-   * box: in hands-free mode the pause IS the send, and routing it through a
-   * box would just put a button back in the way.
+   * box: pressing Stop is the send, and routing it through a box would put a
+   * second button in the way of an answer the speaker has already finished.
+   *
+   * The session has already released the microphone by the time this runs.
    */
   const sendSpoken = useCallback(async (audio: Blob) => {
-    // Each press records exactly one answer. Release the microphone before
-    // uploading it, and never resume it after the assistant replies.
-    session.current?.stop();
-    session.current = null;
-    setLive(false);
-    setLevel(0);
     setMic('transcribing');
     try {
       const body = new FormData();
@@ -255,9 +271,7 @@ function Chat() {
 
   async function startOver() {
     if (!window.confirm('Clear everything and start a new case? This cannot be undone.')) return;
-    session.current?.stop();
-    session.current = null;
-    setLive(false);
+    discardListening();
     setBusy(true);
     try {
       await fetch('/api/case/reset', { method: 'POST' });
@@ -272,21 +286,24 @@ function Chat() {
     }
   }
 
-  function stopListening() {
-    session.current?.stop();
+  /** End the take and send it. The Stop press is the only thing that does this. */
+  async function stopListening() {
+    const active = session.current;
     session.current = null;
     setLive(false);
     setLevel(0);
+    await active?.finish();
   }
 
   function startListening() {
     setError(null);
+    setElapsed(0);
     const started = new LiveSession({
       onSegment: sendSpoken,
       onLevel: setLevel,
       onError: (message) => {
         setError(message);
-        stopListening();
+        discardListening();
       },
     });
     session.current = started;
@@ -296,7 +313,7 @@ function Chat() {
 
   function toggleLive() {
     if (live) {
-      stopListening();
+      void stopListening();
       return;
     }
     // Explained once, before the microphone is ever opened.
@@ -388,7 +405,7 @@ function Chat() {
             <p style={{ margin: 0 }}>
               <strong>Before you speak.</strong> Your recording is sent to our speech provider to be
               turned into text, then discarded. We keep only the text and use it as your next
-              answer. The microphone turns off after that answer.
+              answer. Recording runs until you press Stop, and the microphone turns off then.
             </p>
             <div className="chat-buttons" style={{ justifyContent: 'flex-start', marginTop: 12 }}>
               <button type="button" className="chat-send" onClick={() => {
@@ -406,23 +423,23 @@ function Chat() {
         )}
         {live && (
           <div className="live-bar" role="status">
-            <span className={`live-dot${level > 0.08 ? ' on' : ''}`} aria-hidden="true" />
+            <span className="live-dot on" aria-hidden="true" />
             <span className="live-meter" aria-hidden="true">
               {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
                 <span key={i} className={level * 8 > i ? 'on' : ''} />
               ))}
             </span>
+            <span className="live-clock" aria-hidden="true">{clock(elapsed)}</span>
             <span className="live-text">
-              {mic === 'transcribing'
-                ? 'Writing down what you said…'
-                : busy
-                  ? 'Thinking…'
-                  : level > 0.08
-                    ? 'Listening…'
-                    : 'Go ahead — pause when you are done. Press the microphone again for your next answer.'}
+              Recording. Take as long as you need — pauses are fine.
             </span>
-            <button type="button" className="chat-icon" onClick={toggleLive} aria-label="Stop talking">
-              <Square size={18} />
+            <button
+              type="button"
+              className="live-stop"
+              onClick={() => void stopListening()}
+              aria-label={`Stop recording and send, ${elapsed} seconds recorded`}
+            >
+              <Square size={17} aria-hidden="true" /> Stop and send
             </button>
           </div>
         )}
@@ -468,8 +485,8 @@ function Chat() {
               className={`chat-tool ${live ? 'on' : ''}`}
               onClick={toggleLive}
               disabled={busy || mic === 'transcribing'}
-              aria-label={live ? 'Stop talking' : 'Talk instead of typing'}
-              title={live ? 'Stop talking' : 'Talk instead of typing'}
+              aria-label={live ? 'Stop recording and send' : 'Speak instead of typing'}
+              title={live ? 'Stop recording and send' : 'Speak instead of typing'}
             >
               {live ? <Square size={18} aria-hidden="true" /> : <Mic size={19} aria-hidden="true" />}
               <span>{live ? 'Stop' : 'Speak'}</span>

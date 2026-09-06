@@ -923,9 +923,10 @@ textarea.field, input.field { margin-top: 6px; }
 }
 
 
-/* Hands-free listening. The meter matters more than it looks: without a visible
+/* Push-to-talk. The meter matters more than it looks: without a visible
    response to your voice there is no way to tell the difference between "still
-   listening" and "broken", and people start repeating themselves. */
+   recording" and "broken", and people start repeating themselves. Nothing ends
+   the take but the Stop button, so that button is the loudest thing in the bar. */
 .live-bar {
   display: flex;
   align-items: center;
@@ -944,7 +945,8 @@ textarea.field, input.field { margin-top: 6px; }
   flex: none;
   transition: background 120ms linear, transform 120ms linear;
 }
-.live-dot.on { background: #b91c1c; transform: scale(1.25); }
+.live-dot.on { background: #b91c1c; transform: scale(1.25); animation: live-pulse 1.4s ease-in-out infinite; }
+@keyframes live-pulse { 50% { opacity: 0.35; } }
 
 .live-meter { display: flex; align-items: flex-end; gap: 3px; height: 24px; flex: none; }
 .live-meter span {
@@ -958,8 +960,28 @@ textarea.field, input.field { margin-top: 6px; }
 
 .live-text { flex: 1; color: var(--muted, #5b6472); line-height: 1.45; }
 
+.live-clock {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  font-size: 1.02rem;
+  color: var(--ink);
+}
+
+.live-stop {
+  display: inline-flex; align-items: center; gap: 9px;
+  flex: none;
+  min-height: 44px; padding: 0 18px; border-radius: 10px; border: 0;
+  background: var(--red, #b91c1c); color: #fff;
+  font-size: 1rem; font-weight: 650; cursor: pointer;
+  white-space: nowrap;
+}
+.live-stop:hover { filter: brightness(1.08); }
+.live-stop:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+
 @media (prefers-reduced-motion: reduce) {
   .live-dot, .live-meter span { transition: none; }
+  .live-dot.on { animation: none; }
 }
 
 /* Clearing the case without restarting the server. Quiet by default - it is
