@@ -74,6 +74,15 @@ Casepath guides a user through one calm, four-stage workflow — explain, eviden
 
 </td>
 </tr>
+<tr>
+<td width="50%">
+
+**Sample output — a filled page from the generated CJTS entry guide**
+<img src="casepath-cjts-guide-sample.png" alt="A generated CJTS entry guide page showing the respondent's particulars, with fields Casepath cannot know left marked 'Enter on CJTS'" width="100%">
+
+</td>
+<td width="50%"></td>
+</tr>
 </table>
 
 ## Why this is different (not "just another chatbot")
