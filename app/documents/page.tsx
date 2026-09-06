@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertTriangle, FileWarning, Lock, RefreshCw, Trash2, Upload } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, FileWarning, Lock, RefreshCw, Trash2, Upload } from 'lucide-react';
+import Link from 'next/link';
 import { useCase } from '@/components/case-provider';
 import { ViewState } from '@/components/view-state';
 import { Badge, Button, PageHeader } from '@/components/ui';
@@ -23,10 +24,17 @@ interface UploadReport {
   injectionFindings: { why: string; match: string }[];
 }
 
+interface ReconciliationReport {
+  status: 'completed' | 'unavailable';
+  mutated: boolean;
+  message: string;
+}
+
 function DocumentsPage() {
   const { reload, toast } = useCase();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [reports, setReports] = useState<UploadReport[]>([]);
+  const [reconciliation, setReconciliation] = useState<ReconciliationReport | null>(null);
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
   const input = useRef<HTMLInputElement>(null);
@@ -56,6 +64,7 @@ function DocumentsPage() {
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? 'The upload could not be completed.');
       setReports(body.results);
+      setReconciliation(body.reconciliation ?? null);
       if (body.skipped) toast(body.skipped);
       await Promise.all([refresh(), reload()]);
     } catch (e) {
@@ -127,9 +136,34 @@ function DocumentsPage() {
               onChange={(e) => { if (e.target.files) void upload(e.target.files); e.target.value = ''; }}
             />
             <Button kind="primary" disabled={busy} onClick={() => input.current?.click()}>
-              {busy ? 'Reading…' : 'Choose files'}
+              {busy ? 'Reading and updating your case…' : 'Choose files'}
             </Button>
           </div>
+
+          {reconciliation?.status === 'completed' && reconciliation.mutated && (
+            <div className="action-band" style={{ marginTop: 18, background: 'var(--green-soft)', borderColor: 'rgba(47, 106, 79, 0.24)' }}>
+              <div className="row-start" style={{ alignItems: 'flex-start' }}>
+                <CheckCircle2 size={20} className="icon-good" aria-hidden="true" />
+                <div>
+                  <strong>Case details updated from your files</strong>
+                  <p className="small muted" style={{ margin: '4px 0 0' }}>
+                    Names, dates, amounts and events with readable sources now flow into your worksheet and PDF.
+                  </p>
+                </div>
+              </div>
+              <div className="row-start" style={{ marginTop: 12 }}>
+                <Link className="button button-primary" href="/chronology">Review details</Link>
+                <Link className="button button-secondary" href="/evidence">See evidence links</Link>
+              </div>
+            </div>
+          )}
+
+          {reconciliation?.status === 'unavailable' && (
+            <div className="callout" style={{ marginTop: 18 }}>
+              <AlertTriangle size={19} />
+              <span>{reconciliation.message}</span>
+            </div>
+          )}
 
           {reports.some((r) => r.injectionFindings.length > 0) && (
             <div className="callout" style={{ marginTop: 18 }}>

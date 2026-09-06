@@ -111,9 +111,20 @@ interface Spec {
 
 const claimant = (r: CaseRecord) => r.parties.find((p) => p.role === "claimant");
 const respondent = (r: CaseRecord) => r.parties.find((p) => p.role === "respondent");
+const partySource = (party: { excerptIds?: string[] }) =>
+  party.excerptIds?.length ? "uploaded documents" : "you told us";
+const factSource = (fact: { origin: string; excerptIds: string[] }, spoken: string) =>
+  fact.origin === "document_extracted" && fact.excerptIds.length ? "uploaded documents" : spoken;
 
 function factOf(r: CaseRecord, kind: string) {
-  return r.facts.find((f) => f.kind === kind && !f.unknown);
+  const candidates = r.facts.filter((f) => f.kind === kind && !f.unknown);
+  return candidates.find((f) => f.origin === "document_extracted" && f.excerptIds.length > 0)
+    ?? candidates[0];
+}
+
+function preferredFact<T extends { origin: string; excerptIds: string[] }>(facts: T[]): T | undefined {
+  return facts.find((fact) => fact.origin === "document_extracted" && fact.excerptIds.length > 0)
+    ?? facts[0];
 }
 
 /**
@@ -129,9 +140,10 @@ function factOf(r: CaseRecord, kind: string) {
  * only decides whether a form field is populated, never whether an issue is
  * supported by evidence.
  */
-function settled(f: { origin: string; confirmedByUser: boolean; disputed: boolean }): boolean {
+function settled(f: { origin: string; confirmedByUser: boolean; disputed: boolean; excerptIds?: string[] }): boolean {
   if (f.disputed) return false;
-  return f.origin === "user_stated" || f.confirmedByUser;
+  return f.origin === "user_stated" || f.confirmedByUser ||
+    (f.origin === "document_extracted" && Boolean(f.excerptIds?.length));
 }
 
 const SPECS: Spec[] = [
@@ -143,7 +155,7 @@ const SPECS: Spec[] = [
     help: "As it appears on your NRIC, FIN or passport.",
     derive: (r) => {
       const p = claimant(r);
-      return p?.name ? { value: p.name, source: "you told us", confirmed: true } : null;
+      return p?.name ? { value: p.name, source: partySource(p), confirmed: true } : null;
     },
   },
   {
@@ -154,7 +166,7 @@ const SPECS: Spec[] = [
     help: "NRIC, FIN or passport number. CJTS marks this mandatory.",
     derive: (r) => {
       const p = claimant(r);
-      return p?.idNumber ? { value: p.idNumber, source: "you told us", confirmed: true } : null;
+      return p?.idNumber ? { value: p.idNumber, source: partySource(p), confirmed: true } : null;
     },
   },
   {
@@ -165,7 +177,7 @@ const SPECS: Spec[] = [
     help: "CJTS may use Contact No 1 to reach you, so a working number and a valid email both matter.",
     derive: (r) => {
       const p = claimant(r);
-      return p?.contact ? { value: p.contact, source: "you told us", confirmed: true } : null;
+      return p?.contact ? { value: p.contact, source: partySource(p), confirmed: true } : null;
     },
   },
   {
@@ -176,7 +188,7 @@ const SPECS: Spec[] = [
     help: "CJTS asks for postal code, block, street, floor-unit and building separately.",
     derive: (r) => {
       const p = claimant(r);
-      return p?.address ? { value: p.address, source: "you told us", confirmed: true } : null;
+      return p?.address ? { value: p.address, source: partySource(p), confirmed: true } : null;
     },
   },
   {
@@ -187,7 +199,7 @@ const SPECS: Spec[] = [
     help: "A person's full name, or a business's registered name.",
     derive: (r) => {
       const p = respondent(r);
-      return p?.name ? { value: p.name, source: "you told us", confirmed: true } : null;
+      return p?.name ? { value: p.name, source: partySource(p), confirmed: true } : null;
     },
   },
   {
@@ -204,7 +216,7 @@ const SPECS: Spec[] = [
       const type = p.kind === "business" ? "UEN (a business)" : "NRIC / FIN (a person)";
       return {
         value: p.idNumber ? `${type} — ${p.idNumber}` : type,
-        source: "you told us",
+        source: partySource(p),
         confirmed: true,
       };
     },
@@ -217,7 +229,7 @@ const SPECS: Spec[] = [
     help: "Their registered address. The claim has to be served there.",
     derive: (r) => {
       const p = respondent(r);
-      return p?.address ? { value: p.address, source: "you told us", confirmed: true } : null;
+      return p?.address ? { value: p.address, source: partySource(p), confirmed: true } : null;
     },
   },
   {
@@ -234,7 +246,7 @@ const SPECS: Spec[] = [
         goods_and_services: "Goods and a service",
         other: "Something else",
       };
-      return { value: words[r.case.claimCategory] ?? r.case.claimCategory, source: "from what you told us", confirmed: true };
+      return { value: words[r.case.claimCategory] ?? r.case.claimCategory, source: "current case details", confirmed: true };
     },
   },
   {
@@ -246,7 +258,7 @@ const SPECS: Spec[] = [
     derive: (r) => {
       const f = factOf(r, "agreement");
       if (!f) return null;
-      return { value: f.statement, source: "what you told us was agreed", confirmed: settled(f) };
+      return { value: f.statement, source: factSource(f, "what you told us was agreed"), confirmed: settled(f) };
     },
   },
   {
@@ -263,16 +275,20 @@ const SPECS: Spec[] = [
       if (requested?.amount && requested.amount.minorUnits > 0) {
         return {
           value: formatMoney(requested.amount),
-          source: "the amount you said you are claiming",
+          source: factSource(requested, "the amount you said you are claiming"),
           confirmed: settled(requested),
         };
       }
 
       // Built from components so the figure can be traced, and left empty when
       // they do not reconcile rather than guessed at.
-      const moneyFacts = r.facts.filter(
+      const allMoneyFacts = r.facts.filter(
         (f) => (f.kind === "payment" || f.kind === "loss") && f.amount && !f.unknown,
       );
+      const documentMoneyFacts = allMoneyFacts.filter(
+        (f) => f.origin === "document_extracted" && f.excerptIds.length > 0,
+      );
+      const moneyFacts = documentMoneyFacts.length > 0 ? documentMoneyFacts : allMoneyFacts;
       // Only an actual money fact phrased as a refund reduces the fallback
       // amount, and it must not also be counted once as a positive payment.
       const refunds = moneyFacts.filter((f) => /\b(refund|refunded|repaid)\b/i.test(f.statement));
@@ -296,7 +312,13 @@ const SPECS: Spec[] = [
     required: true,
     help: "A claim normally has to be brought within two years of this date.",
     derive: (r) => {
-      const f = factOf(r, "promised_performance") ?? factOf(r, "event");
+      const promised = r.facts.filter(
+        (fact) => fact.kind === "promised_performance" && !fact.unknown && fact.date?.value,
+      );
+      const events = r.facts.filter(
+        (fact) => fact.kind === "event" && !fact.unknown && fact.date?.value,
+      );
+      const f = preferredFact(promised) ?? preferredFact(events);
       if (!f?.date?.value) return null;
       // An approximate date is not good enough for a filing deadline, so it is
       // offered as unconfirmed rather than presented as settled.
@@ -324,7 +346,9 @@ const SPECS: Spec[] = [
           text.length > SUMMARY_MAX
             ? `${text.slice(0, SUMMARY_MAX - 1)}… (${text.length} characters — CJTS allows ${SUMMARY_MAX}, so this needs shortening)`
             : text,
-        source: `${parts.length} thing(s) you told us`,
+        source: parts.some((fact) => fact.origin === "document_extracted" && fact.excerptIds.length)
+          ? "uploaded documents"
+          : `${parts.length} thing(s) you told us`,
         confirmed: parts.every(settled),
       };
     },

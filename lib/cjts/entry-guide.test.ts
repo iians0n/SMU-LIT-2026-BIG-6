@@ -121,7 +121,19 @@ describe("CJTS entry guide mapping", () => {
     assert.ok(guide.warnings.some((warning) => warning.includes("ACRA")));
   });
 
-  it("leaves ambiguous and unreviewed values blank instead of guessing", () => {
+  it("keeps document provenance on party details filled from an uploaded passage", () => {
+    const record = cloneRecord();
+    const excerptId = record.excerpts[0].id;
+    record.parties[0].excerptIds = [excerptId];
+    const view = adaptCaseRecord(record);
+
+    const guide = buildCjtsEntryGuide(record, view, workflowFor(record));
+
+    assert.deepEqual(guide.claimant.name.sourceRefs, [{ kind: "excerpt", id: excerptId }]);
+    assert.deepEqual(guide.claimant.idNumber.sourceRefs, [{ kind: "excerpt", id: excerptId }]);
+  });
+
+  it("leaves ambiguous contact values blank while retaining a cited case summary", () => {
     const record = cloneRecord();
     record.parties[0].contact = "two numbers: 91234567 and 87654321";
     record.parties[1].inSingapore = null;
@@ -133,7 +145,7 @@ describe("CJTS entry guide mapping", () => {
 
     assert.equal(guide.claimant.phone.value, null);
     assert.equal(guide.respondent.address.country.value, null);
-    assert.equal(guide.claim.summary.value, null);
-    assert.equal(guide.claim.summary.status, "missing");
+    assert.match(guide.claim.summary.value ?? "", /bathroom waterproofing/i);
+    assert.equal(guide.claim.summary.status, "filled");
   });
 });

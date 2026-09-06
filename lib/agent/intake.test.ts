@@ -36,6 +36,49 @@ describe("planIntakeProgress", () => {
     ]);
   });
 
+  it("directs a completed intake to document upload when no files exist", () => {
+    const record = structuredClone(demoCase);
+    const disputedDate = record.facts.find((fact) => fact.id === "f3");
+    assert.ok(disputedDate);
+    disputedDate.disputed = false;
+    record.documents = [];
+    record.excerpts = [];
+
+    const result = planIntakeProgress(record);
+
+    assert.equal(result.complete, true);
+    assert.equal(result.fullyFilled, true);
+    assert.match(result.reply, /upload anything that supports what you told me/i);
+    assert.deepEqual(result.nextSteps, [
+      { label: "Upload your documents", href: "/documents" },
+    ]);
+  });
+
+  it("offers document upload after a substantive spoken introduction even when documents can fill the remaining fields", () => {
+    const record = emptyCase();
+    record.facts.push({
+      id: "f_spoken_intro",
+      kind: "agreement",
+      statement: "I hired a contractor to renovate my bathroom, but the work was not finished.",
+      origin: "user_stated",
+      confirmedByUser: false,
+      disputed: false,
+      unknown: false,
+      excerptIds: [],
+      lastChangedAtVersion: 1,
+      updatedAt: "2026-09-06T00:00:00.000Z",
+    });
+
+    const result = planIntakeProgress(record);
+
+    assert.equal(result.complete, true);
+    assert.equal(result.fullyFilled, false);
+    assert.match(result.reply, /documents can fill in missing names, dates and amounts/i);
+    assert.deepEqual(result.nextSteps, [
+      { label: "Upload your documents", href: "/documents" },
+    ]);
+  });
+
   it("does not re-ask fields the user explicitly set aside", () => {
     const record = emptyCase();
     const first = planIntakeProgress(record);

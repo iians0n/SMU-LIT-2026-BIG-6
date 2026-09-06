@@ -31,7 +31,7 @@ interface Turn {
   role: 'user' | 'assistant';
   content: string;
   actions?: string[];
-  nextSteps?: Array<{ label: string; href: '/chronology' | '/evidence' | '/prepare' }>;
+  nextSteps?: Array<{ label: string; href: '/documents' | '/chronology' | '/evidence' | '/prepare' }>;
 }
 
 const OPENER =
@@ -97,7 +97,7 @@ OPENAI_BASE_URL=https://api.openai.com/v1`}
 }
 
 function Chat() {
-  const { reload } = useCase();
+  const { record, reload } = useCase();
   const [turns, setTurns] = useState<Turn[]>([{ role: 'assistant', content: OPENER }]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
@@ -511,8 +511,17 @@ function Chat() {
             <div className="form-complete-title">
               <CheckCircle2 size={18} aria-hidden="true" /> Details collected
             </div>
-            <Link className="form-primary-link" href="/chronology">Review your answers <ArrowRight size={15} aria-hidden="true" /></Link>
-            <Link href="/prepare">Download PDF <ArrowRight size={15} aria-hidden="true" /></Link>
+            {record?.documents.length ? (
+              <>
+                <Link className="form-primary-link" href="/chronology">Review your answers <ArrowRight size={15} aria-hidden="true" /></Link>
+                <Link href="/prepare">Download PDF <ArrowRight size={15} aria-hidden="true" /></Link>
+              </>
+            ) : (
+              <>
+                <Link className="form-primary-link" href="/documents">Upload your documents <ArrowRight size={15} aria-hidden="true" /></Link>
+                <Link href="/chronology">Review your answers <ArrowRight size={15} aria-hidden="true" /></Link>
+              </>
+            )}
           </div>
         )}
 

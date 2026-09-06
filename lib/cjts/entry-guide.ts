@@ -88,10 +88,13 @@ function factRef(fact: Fact | undefined): SourceRef[] {
 }
 
 function settledFact(record: CaseRecord, kind: Fact["kind"]): Fact | undefined {
-  return record.facts.find(
+  const candidates = record.facts.filter(
     (fact) => fact.kind === kind && !fact.unknown && !fact.disputed &&
-      (fact.origin === "user_stated" || fact.confirmedByUser),
+      (fact.origin === "user_stated" || fact.confirmedByUser ||
+        (fact.origin === "document_extracted" && fact.excerptIds.length > 0)),
   );
+  return candidates.find((fact) => fact.origin === "document_extracted" && fact.excerptIds.length > 0)
+    ?? candidates[0];
 }
 
 export function parseContact(value: string | null): ParsedContact {
@@ -147,10 +150,14 @@ export function summariseForCjts(value: string, max = 500): string {
   return `${available.slice(0, boundary > 0 ? boundary : available.length).trim()}…`;
 }
 
+function partyRefs(party: Party | undefined): SourceRef[] {
+  return (party?.excerptIds ?? []).map((id) => ({ kind: "excerpt" as const, id }));
+}
+
 function guideAddress(party: Party | undefined): Record<keyof ParsedAddress, GuideValue> {
   const parsed = parseSingaporeAddress(party?.address ?? null, party?.inSingapore ?? null);
   return Object.fromEntries(
-    Object.entries(parsed).map(([key, value]) => [key, filled(value)]),
+    Object.entries(parsed).map(([key, value]) => [key, filled(value, partyRefs(party))]),
   ) as Record<keyof ParsedAddress, GuideValue>;
 }
 
@@ -163,12 +170,13 @@ function idType(party: Party | undefined): string | null {
 
 function guideParty(party: Party | undefined): GuideParty {
   const contact = parseContact(party?.contact ?? null);
+  const refs = partyRefs(party);
   return {
-    name: filled(party?.name),
-    idType: filled(idType(party)),
-    idNumber: filled(party?.idNumber),
-    phone: filled(contact.phone),
-    email: filled(contact.email),
+    name: filled(party?.name, refs),
+    idType: filled(idType(party), refs),
+    idNumber: filled(party?.idNumber, refs),
+    phone: filled(contact.phone, refs),
+    email: filled(contact.email, refs),
     address: guideAddress(party),
   };
 }
@@ -206,10 +214,14 @@ export function buildCjtsEntryGuide(
   const claimant = record.parties.find((party) => party.role === "claimant");
   const respondent = record.parties.find((party) => party.role === "respondent");
   const agreement = settledFact(record, "agreement");
-  const paymentFacts = record.facts.filter(
+  const allPaymentFacts = record.facts.filter(
     (fact) => fact.kind === "payment" && !fact.unknown && !fact.disputed && fact.amount?.currencyCode === "SGD" &&
       !/\b(refund|refunded|repaid)\b/i.test(fact.statement),
   );
+  const citedPaymentFacts = allPaymentFacts.filter(
+    (fact) => fact.origin === "document_extracted" && fact.excerptIds.length > 0,
+  );
+  const paymentFacts = citedPaymentFacts.length > 0 ? citedPaymentFacts : allPaymentFacts;
   const promised = settledFact(record, "promised_performance");
   const desired = settledFact(record, "desired_outcome");
   const contractSum = amountOf(agreement);
@@ -282,7 +294,12 @@ export function buildCjtsEntryGuide(
       summary: summaryField
         ? filled(summariseForCjts(summaryField.value), [summaryField.sourceRef, ...summaryField.additionalSourceRefs]
           .filter((ref): ref is SourceRef => Boolean(ref)))
-        : missing(),
+        : formField("claim_summary")?.status === "filled" && formField("claim_summary")?.value
+          ? filled(
+              summariseForCjts(formField("claim_summary")!.value!),
+              [agreement, settledFact(record, "event"), settledFact(record, "loss")].flatMap(factRef),
+            )
+          : missing(),
       orders: {
         moneyOrder: claimAmount !== null && claimAmount > 0,
         workOrder: false,

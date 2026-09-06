@@ -21,7 +21,10 @@ import { assembleDraft, amountCalculation, readyForTransfer, validateEdit } from
 import { screenRoute } from '@/lib/rules/rules.v1';
 import { SUPPORT_STATUS_LABEL } from '@/lib/contracts';
 import { runTool } from '@/lib/agent/tools';
+import { reconcileCaseFromDocuments } from '@/lib/agent/document-reconciliation';
 import { getWorkflow } from '@/lib/workflow';
+import { deriveForm } from '@/lib/cjts/form';
+import { buildCjtsEntryGuide } from '@/lib/cjts/entry-guide';
 
 import { POST as uploadDocuments, DELETE as removeDocument } from '@/app/api/documents/route';
 import { POST as updateFact } from '@/app/api/facts/route';
@@ -88,6 +91,277 @@ describe('Scenario 1 — complete goods or services dispute', () => {
     expect(workflow.route.sourceCaseVersion).toBe(adapted.version);
     expect(workflow.tasks.every((task) => task.sourceCaseVersion === adapted.version)).toBe(true);
     expect(workflow.draft.sourceCaseVersion).toBe(adapted.version);
+  });
+
+  it('fills the CJTS worksheet and guide from cited document findings after a spoken introduction', async () => {
+    resetCase();
+    const record = getCase();
+    record.documents.push({
+      id: 'd_contract',
+      fileName: 'complete-case.pdf',
+      extension: 'pdf',
+      byteSize: 2048,
+      hash: 'demo-hash',
+      uploadedAt: '2026-09-06T00:00:00.000Z',
+      processingStatus: 'extracted',
+      issues: [],
+      proposedLabel: 'Complete case records',
+      userLabel: null,
+      pageCount: 3,
+      failureReason: null,
+    });
+    record.excerpts.push(
+      {
+        id: 'e_parties', documentId: 'd_contract', anchor: { kind: 'page', page: 1 },
+        text: 'Aisha Rahman, S9000001A, aisha@example.com, 51 Demo Street, Singapore 540051. Northstar Works Pte Ltd, UEN 202600001N, 18 Ubi Road, Singapore 408018.',
+        extractionConfidence: 1,
+      },
+      {
+        id: 'e_agreement', documentId: 'd_contract', anchor: { kind: 'page', page: 2 },
+        text: 'Bathroom renovation for S$8,400, due 30 June 2026. Full payment received.',
+        extractionConfidence: 1,
+      },
+      {
+        id: 'e_failure', documentId: 'd_contract', anchor: { kind: 'page', page: 3 },
+        text: 'The bathroom remained unfinished. S$1,000 was refunded. Aisha requests S$7,400.',
+        extractionConfidence: 1,
+      },
+    );
+
+    const spoken = await runTool('record_fact', {
+      kind: 'agreement',
+      statement: 'I hired Northstar to renovate my bathroom.',
+    });
+    expect(spoken.mutated).toBe(true);
+    const spokenFactId = getCase().facts[0].id;
+
+    const reconciled = await runTool('apply_document_findings', {
+      claimCategory: 'services',
+      parties: [
+        {
+          role: 'claimant', kind: 'individual', name: 'Aisha Rahman', idNumber: 'S9000001A',
+          contact: 'aisha@example.com', address: '51 Demo Street, Singapore 540051', inSingapore: true,
+          excerptIds: ['e_parties'],
+        },
+        {
+          role: 'respondent', kind: 'business', name: 'Northstar Works Pte Ltd', idNumber: '202600001N',
+          address: '18 Ubi Road, Singapore 408018', inSingapore: true, excerptIds: ['e_parties'],
+        },
+      ],
+      facts: [
+        { factId: spokenFactId, kind: 'agreement', statement: 'Bathroom renovation agreement.', amountSgd: 8400, date: '2026-06-03', excerptIds: ['e_agreement'] },
+        { kind: 'promised_performance', statement: 'The renovation was due on 30 June 2026.', date: '2026-06-30', excerptIds: ['e_agreement'] },
+        { kind: 'payment', statement: 'Aisha paid S$8,400.', amountSgd: 8400, excerptIds: ['e_agreement'] },
+        { kind: 'event', statement: 'The bathroom remained unfinished after the deadline.', date: '2026-06-30', excerptIds: ['e_failure'] },
+        { kind: 'payment', statement: 'Northstar refunded S$1,000.', amountSgd: 1000, excerptIds: ['e_failure'] },
+        { kind: 'desired_outcome', statement: 'Aisha requests the remaining S$7,400.', amountSgd: 7400, excerptIds: ['e_failure'] },
+      ],
+    });
+
+    expect(reconciled.mutated).toBe(true);
+    const replacedSpokenFact = getCase().facts.find((fact) => fact.id === spokenFactId);
+    expect(replacedSpokenFact?.statement).toBe('Bathroom renovation agreement.');
+    expect(replacedSpokenFact?.amount?.minorUnits).toBe(840000);
+    expect(replacedSpokenFact?.origin).toBe('document_extracted');
+    expect(replacedSpokenFact?.excerptIds).toEqual(['e_agreement']);
+    expect(getCase().facts.filter((fact) => fact.origin === 'document_extracted').length).toBeGreaterThanOrEqual(5);
+    expect(deriveForm(getCase()).filled).toBe(12);
+
+    const view = adaptCaseRecord(getCase(), 'demo-owner');
+    const guide = buildCjtsEntryGuide(getCase(), view, getWorkflow(view));
+    expect(guide.claimant.name.value).toBe('Aisha Rahman');
+    expect(guide.respondent.idNumber.value).toBe('202600001N');
+    expect(guide.claim.contractSum.value).toBe('S$8,400.00');
+    expect(guide.claim.claimAmount.value).toBe('S$7,400.00');
+    expect(guide.claim.dateDefaulted.value).toBe('30/06/2026');
+    expect(guide.claim.summary.status).toBe('filled');
+  });
+
+  it('runs document reconciliation automatically against the uploaded excerpts', async () => {
+    resetCase();
+    getCase().documents.push({
+      id: 'd_auto', fileName: 'agreement.txt', extension: 'txt', byteSize: 120, hash: 'auto-hash',
+      uploadedAt: '2026-09-06T00:00:00.000Z', processingStatus: 'extracted', issues: [],
+      proposedLabel: 'Agreement', userLabel: null, pageCount: 1, failureReason: null,
+    });
+    getCase().excerpts.push({
+      id: 'e_auto', documentId: 'd_auto', anchor: { kind: 'page', page: 1 },
+      text: 'Northstar agreed to bathroom renovation services for Aisha for S$8,400.',
+      extractionConfidence: 1,
+    });
+
+    let receivedExcerptIds: string[] = [];
+    const result = await reconcileCaseFromDocuments(async (input) => {
+      receivedExcerptIds = input.excerpts.map((excerpt) => excerpt.id);
+      return {
+        claimCategory: 'services',
+        parties: [],
+        facts: [{
+          kind: 'agreement', statement: 'Bathroom renovation services for S$8,400.',
+          amountSgd: 8400, excerptIds: ['e_auto'],
+        }],
+      };
+    });
+
+    expect(receivedExcerptIds).toEqual(['e_auto']);
+    expect(result.mutated).toBe(true);
+    expect(getCase().facts[0].origin).toBe('document_extracted');
+    expect(getCase().facts[0].excerptIds).toEqual(['e_auto']);
+  });
+
+  it('fills a missing claimant contact from the cited passage instead of leaving the CJTS field blank', async () => {
+    resetCase();
+    getCase().documents.push({
+      id: 'd_contact', fileName: 'email.txt', extension: 'txt', byteSize: 100, hash: 'contact-hash',
+      uploadedAt: '2026-09-06T00:00:00.000Z', processingStatus: 'extracted', issues: [],
+      proposedLabel: null, userLabel: null, pageCount: 1, failureReason: null,
+    });
+    getCase().excerpts.push({
+      id: 'e_contact', documentId: 'd_contact', anchor: { kind: 'page', page: 1 },
+      text: 'From: Aisha Rahman <aisha.rahman@example.com>', extractionConfidence: 1,
+    });
+
+    await reconcileCaseFromDocuments(async () => ({
+      claimCategory: 'services',
+      parties: [{
+        role: 'claimant', name: 'Aisha Rahman', kind: 'individual',
+        excerptIds: ['e_contact'],
+      }],
+      facts: [],
+    }));
+
+    expect(getCase().parties[0].contact).toBe('aisha.rahman@example.com');
+    expect(getCase().parties[0].excerptIds).toEqual(['e_contact']);
+  });
+
+  it('replaces a conflicting spoken party value with the cited document value', async () => {
+    resetCase();
+    getCase().parties.push({
+      id: 'p_claimant', role: 'claimant', name: 'Spoken Name', kind: 'individual',
+      acraProfileNeeded: false, address: null, contact: null, idNumber: null,
+      inSingapore: true, notes: null,
+    });
+    getCase().documents.push({
+      id: 'd_identity', fileName: 'identity.txt', extension: 'txt', byteSize: 100, hash: 'identity-hash',
+      uploadedAt: '2026-09-06T00:00:00.000Z', processingStatus: 'extracted', issues: [],
+      proposedLabel: null, userLabel: null, pageCount: 1, failureReason: null,
+    });
+    getCase().excerpts.push({
+      id: 'e_identity', documentId: 'd_identity', anchor: { kind: 'page', page: 1 },
+      text: 'Document Name, S9000001A', extractionConfidence: 1,
+    });
+
+    await runTool('apply_document_findings', {
+      parties: [{
+        role: 'claimant', kind: 'individual', name: 'Document Name', idNumber: 'S9000001A',
+        inSingapore: true, excerptIds: ['e_identity'],
+      }],
+      facts: [],
+    });
+
+    const claimant = getCase().parties[0];
+    expect(claimant.name).toBe('Document Name');
+    expect(claimant.idNumber).toBe('S9000001A');
+    expect(claimant.excerptIds).toEqual(['e_identity']);
+    expect(claimant.notes).toMatch(/uploaded documents/i);
+    expect(getCase().openQuestions.some((question) => /claimant name/i.test(question.question))).toBe(false);
+  });
+
+  it('uses a cited document amount instead of an earlier conflicting spoken amount everywhere', async () => {
+    resetCase();
+    getCase().documents.push({
+      id: 'd_demand', fileName: 'demand.txt', extension: 'txt', byteSize: 100, hash: 'demand-hash',
+      uploadedAt: '2026-09-06T00:00:00.000Z', processingStatus: 'extracted', issues: [],
+      proposedLabel: null, userLabel: null, pageCount: 1, failureReason: null,
+    });
+    getCase().excerpts.push({
+      id: 'e_demand', documentId: 'd_demand', anchor: { kind: 'page', page: 1 },
+      text: 'The claimant requests payment of S$7,400.', extractionConfidence: 1,
+    });
+
+    await runTool('record_fact', {
+      kind: 'desired_outcome', statement: 'I think I want S$1,000.', amountSgd: 1000,
+    });
+    await runTool('apply_document_findings', {
+      claimCategory: 'services', parties: [], facts: [{
+        kind: 'desired_outcome', statement: 'The claimant requests payment of S$7,400.',
+        amountSgd: 7400, excerptIds: ['e_demand'],
+      }],
+    });
+
+    const field = deriveForm(getCase()).groups.flatMap((group) => group.fields)
+      .find((candidate) => candidate.key === 'claim_amount');
+    expect(field?.value).toBe('S$7,400.00');
+    expect(adaptCaseRecord(getCase(), 'owner').amountCents).toBe(740000);
+    expect(getCase().case.requestedOutcome).toBe('The claimant requests payment of S$7,400.');
+  });
+
+  it('uses a dated event when the first promised-performance detail has no date', async () => {
+    const record = structuredClone(demoCase);
+    const promised = record.facts.find((fact) => fact.kind === 'promised_performance');
+    const event = record.facts.find((fact) => fact.kind === 'event');
+    expect(promised).toBeTruthy();
+    expect(event).toBeTruthy();
+    for (const fact of record.facts.filter((item) => item.kind === 'promised_performance')) {
+      delete fact.date;
+      fact.disputed = false;
+    }
+    for (const fact of record.facts.filter((item) => item.kind === 'event')) delete fact.date;
+    event!.date = { value: '2026-07-02', precision: 'exact' };
+    event!.disputed = false;
+    event!.unknown = false;
+    event!.origin = 'document_extracted';
+    event!.excerptIds = [record.excerpts[0].id];
+
+    const claimDate = deriveForm(record).groups
+      .flatMap((group) => group.fields)
+      .find((field) => field.key === 'claim_date');
+
+    expect(claimDate?.status).toBe('filled');
+    expect(claimDate?.value).toBe('2026-07-02');
+  });
+
+  it('does not double-count a contract price and total receipt as extra payments in the CJTS guide', async () => {
+    resetCase();
+    getCase().documents.push({
+      id: 'd_money', fileName: 'money.txt', extension: 'txt', byteSize: 200, hash: 'money-hash',
+      uploadedAt: '2026-09-06T00:00:00.000Z', processingStatus: 'extracted', issues: [],
+      proposedLabel: null, userLabel: null, pageCount: 1, failureReason: null,
+    });
+    getCase().excerpts.push({
+      id: 'e_money', documentId: 'd_money', anchor: { kind: 'page', page: 1 },
+      text: 'Contract price S$8,400. Paid S$4,200 twice. Total S$8,400 received.', extractionConfidence: 1,
+    });
+
+    await reconcileCaseFromDocuments(async () => ({
+      claimCategory: 'services', parties: [], facts: [
+        { kind: 'agreement', statement: 'Bathroom renovation agreement.', excerptIds: ['e_money'] },
+        { kind: 'payment', statement: 'The fixed contract price was S$8,400.', amountSgd: 8400, excerptIds: ['e_money'] },
+        { kind: 'payment', statement: 'Aisha paid S$4,200 on signing.', amountSgd: 4200, date: '2026-06-03', excerptIds: ['e_money'] },
+        { kind: 'payment', statement: 'Aisha paid a second S$4,200.', amountSgd: 4200, date: '2026-06-15', excerptIds: ['e_money'] },
+        { kind: 'payment', statement: 'The full contract price of S$8,400 was received.', amountSgd: 8400, date: '2026-06-15', excerptIds: ['e_money'] },
+        { kind: 'desired_outcome', statement: 'Aisha requests S$7,400.', amountSgd: 7400, excerptIds: ['e_money'] },
+      ],
+    }));
+
+    const view = adaptCaseRecord(getCase(), 'money-owner');
+    const guide = buildCjtsEntryGuide(getCase(), view, getWorkflow(view));
+    expect(guide.claim.contractSum.value).toBe('S$8,400.00');
+    expect(guide.claim.paid.value).toBe('S$8,400.00');
+  });
+
+  it('rejects every document-derived update when none of its passage ids resolve', async () => {
+    resetCase();
+    const result = await runTool('apply_document_findings', {
+      claimCategory: 'services',
+      parties: [{ role: 'claimant', name: 'Invented Name', kind: 'individual', excerptIds: ['not-real'] }],
+      facts: [{ kind: 'agreement', statement: 'Invented agreement.', excerptIds: ['not-real'] }],
+    });
+
+    expect(result.mutated).toBe(false);
+    expect(getCase().case.claimCategory).toBe('unknown');
+    expect(getCase().parties).toEqual([]);
+    expect(getCase().facts).toEqual([]);
   });
 });
 

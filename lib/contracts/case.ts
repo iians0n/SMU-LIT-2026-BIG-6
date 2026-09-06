@@ -68,6 +68,8 @@ export interface Party {
   idNumber: string | null;
   inSingapore: boolean | null;
   notes: string | null;
+  /** Readable passages used when missing party details were filled from documents. */
+  excerptIds?: Id[];
 }
 
 export interface CaseMeta {

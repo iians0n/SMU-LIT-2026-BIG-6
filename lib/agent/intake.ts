@@ -3,7 +3,7 @@ import { deriveForm, type FormField } from "@/lib/cjts/form";
 
 export interface IntakeNextStep {
   label: string;
-  href: "/chronology" | "/evidence" | "/prepare";
+  href: "/documents" | "/chronology" | "/evidence" | "/prepare";
 }
 
 export interface IntakeProgress {
@@ -19,6 +19,11 @@ export const INTAKE_NEXT_STEPS: IntakeNextStep[] = [
   { label: "Check what your files support", href: "/evidence" },
   { label: "Download the preparation pack PDF", href: "/prepare" },
 ];
+
+export const INTAKE_DOCUMENT_STEP: IntakeNextStep = {
+  label: "Upload your documents",
+  href: "/documents",
+};
 
 const FIELD_REQUEST: Record<string, string> = {
   claimant_name: "your full name",
@@ -73,6 +78,19 @@ export function planIntakeProgress(record: CaseRecord): IntakeProgress {
   const form = deriveForm(record);
   const missing = askableFields(record);
   const fullyFilled = form.outstanding.length === 0;
+  const hasSpokenCase = record.facts.some((fact) => !fact.unknown && fact.kind !== "party");
+
+  if (record.documents.length === 0 && hasSpokenCase) {
+    return {
+      complete: true,
+      fullyFilled,
+      missingKeys: missing.map((field) => field.key),
+      reply: fullyFilled
+        ? "Thanks — I've organised the key details of your case. Next, upload anything that supports what you told me, such as agreements, receipts, emails, messages or photos. I'll read them and connect relevant passages to your case."
+        : "Thanks — I have the outline of your case. Upload your agreements, receipts, emails, messages or photos next. Your documents can fill in missing names, dates and amounts, and I’ll link each detail to the passage it came from.",
+      nextSteps: [INTAKE_DOCUMENT_STEP],
+    };
+  }
 
   if (missing.length === 0) {
     return {
@@ -80,7 +98,7 @@ export function planIntakeProgress(record: CaseRecord): IntakeProgress {
       fullyFilled,
       missingKeys: [],
       reply: fullyFilled
-        ? "Your preparation worksheet is ready. Use the three next steps below to check it, match your files to it, and download the PDF. CJTS will issue the pre-filing assessment ID when you complete its assessment."
+          ? "Your preparation worksheet is ready. Use the three next steps below to check it, match your files to it, and download the PDF. CJTS will issue the pre-filing assessment ID when you complete its assessment."
         : "I've stopped the questions. Add the details you set aside if you find them later; for now, use the next steps below to review what is recorded and prepare your files.",
       nextSteps: INTAKE_NEXT_STEPS,
     };

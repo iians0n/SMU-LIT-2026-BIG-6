@@ -185,6 +185,8 @@ export async function runTool(name: string, args: Record<string, unknown>): Prom
       return readDocuments(args);
     case "link_fact_to_excerpts":
       return linkFactToExcerpts(args);
+    case "apply_document_findings":
+      return applyDocumentFindings(args);
     default:
       return { content: `There is no tool called ${name}.`, mutated: false };
   }
@@ -444,4 +446,177 @@ function linkFactToExcerpts(args: Record<string, unknown>): ToolResult {
   bumpVersion(`linked passages to ${factId}`);
   synchroniseDerivedCase();
   return { content: `Linked ${additions.length} passage(s) to ${factId}.`, mutated: true };
+}
+
+/**
+ * Apply a validated, cited extraction produced after upload.
+ *
+ * This is intentionally not exposed in TOOLS: a normal conversation may read
+ * documents and link facts, but only the upload reconciliation pipeline may
+ * use documents to fill missing worksheet values automatically.
+ */
+function applyDocumentFindings(args: Record<string, unknown>): ToolResult {
+  const parties = Array.isArray(args.parties) ? args.parties : [];
+  const facts = Array.isArray(args.facts) ? args.facts : [];
+  const hasCitedFinding = [...parties, ...facts].some((value) =>
+    Boolean(value) && typeof value === "object" &&
+    validExcerptIds((value as Record<string, unknown>).excerptIds).length > 0,
+  );
+  if (!hasCitedFinding) {
+    return { content: "No new cited details were found.", mutated: false };
+  }
+  const category = String(args.claimCategory ?? "unknown");
+  const allowedCategories = new Set(["goods", "services", "goods_and_services", "other"]);
+  const now = new Date().toISOString();
+  let changed = false;
+
+  patchCase((draft) => {
+    if (allowedCategories.has(category) && draft.case.claimCategory !== category) {
+      draft.case.claimCategory = category as typeof draft.case.claimCategory;
+      changed = true;
+    }
+
+    for (const value of parties) {
+      if (!value || typeof value !== "object") continue;
+      const finding = value as Record<string, unknown>;
+      const role = finding.role === "respondent" ? "respondent" : finding.role === "claimant" ? "claimant" : null;
+      if (!role) continue;
+      const excerptIds = validExcerptIds(finding.excerptIds);
+      if (excerptIds.length === 0) continue;
+      const existing = draft.parties.find((party) => party.role === role);
+      const kind = ["individual", "business", "unknown"].includes(String(finding.kind))
+        ? String(finding.kind) as "individual" | "business" | "unknown"
+        : "unknown";
+      const text = (key: string) =>
+        typeof finding[key] === "string" && String(finding[key]).trim()
+          ? String(finding[key]).trim()
+          : null;
+      const incoming = {
+        name: text("name"),
+        address: text("address"),
+        contact: text("contact"),
+        idNumber: text("idNumber"),
+      };
+
+      if (!existing) {
+        if (!incoming.name) continue;
+        draft.parties.push({
+          id: `p_${role}`,
+          role,
+          name: incoming.name,
+          kind,
+          acraProfileNeeded: role === "respondent" && kind === "business",
+          address: incoming.address,
+          contact: incoming.contact,
+          idNumber: incoming.idNumber,
+          inSingapore: typeof finding.inSingapore === "boolean" ? finding.inSingapore : null,
+          notes: "Filled from uploaded documents; review against the original.",
+          excerptIds,
+        });
+        changed = true;
+      } else {
+        for (const key of ["name", "address", "contact", "idNumber"] as const) {
+          const proposed = incoming[key];
+          if (!proposed) continue;
+          if (existing[key] !== proposed) {
+            existing[key] = proposed;
+            changed = true;
+          }
+        }
+        if (kind !== "unknown" && existing.kind !== kind) {
+          existing.kind = kind;
+          existing.acraProfileNeeded = role === "respondent" && kind === "business";
+          changed = true;
+        }
+        if (typeof finding.inSingapore === "boolean" && existing.inSingapore !== finding.inSingapore) {
+          existing.inSingapore = finding.inSingapore;
+          changed = true;
+        }
+        const linkedExcerptIds = [...new Set([...(existing.excerptIds ?? []), ...excerptIds])];
+        if (linkedExcerptIds.length !== (existing.excerptIds ?? []).length) {
+          existing.excerptIds = linkedExcerptIds;
+          changed = true;
+        }
+        const documentNote = "Filled from uploaded documents; review against the original.";
+        if (existing.notes !== documentNote) {
+          existing.notes = documentNote;
+          changed = true;
+        }
+      }
+    }
+
+    for (const value of facts) {
+      if (!value || typeof value !== "object") continue;
+      const finding = value as Record<string, unknown>;
+      const kind = String(finding.kind) as FactKind;
+      const statement = String(finding.statement ?? "").trim();
+      const excerptIds = validExcerptIds(finding.excerptIds);
+      if (!FACT_KINDS.includes(kind) || !statement || excerptIds.length === 0) continue;
+      const requestedId = typeof finding.factId === "string" ? finding.factId : "";
+      const target = draft.facts.find((fact) => fact.id === requestedId);
+      const amount = typeof finding.amountSgd === "number" && Number.isFinite(finding.amountSgd)
+        ? { currencyCode: "SGD" as const, minorUnits: Math.round(finding.amountSgd * 100) }
+        : undefined;
+      const date = typeof finding.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(finding.date)
+        ? { value: finding.date, precision: "exact" as const }
+        : undefined;
+
+      if (target) {
+        target.kind = kind;
+        target.statement = statement;
+        target.amount = amount;
+        target.date = date;
+        target.origin = "document_extracted";
+        target.confirmedByUser = false;
+        target.disputed = false;
+        target.unknown = false;
+        target.excerptIds = excerptIds;
+        target.lastChangedAtVersion = draft.case.version + 1;
+        target.updatedAt = now;
+        changed = true;
+      } else {
+        const id = `f_d_${Date.now().toString(36)}_${draft.facts.length}`;
+        draft.facts.push({
+          id,
+          kind,
+          statement,
+          ...(amount ? { amount } : {}),
+          ...(date ? { date } : {}),
+          origin: "document_extracted",
+          confirmedByUser: false,
+          disputed: false,
+          unknown: false,
+          excerptIds,
+          lastChangedAtVersion: draft.case.version + 1,
+          updatedAt: now,
+        });
+        draft.verificationEvents.push({
+          id: `ve_${id}`,
+          kind: "ai_extracted",
+          affectedOutput: `fact:${id}`,
+          usedFactIds: [id],
+          usedSourceIds: excerptIds,
+          note: `Extracted from uploaded documents: “${statement}”`,
+          at: now,
+          caseVersion: draft.case.version + 1,
+        });
+        changed = true;
+      }
+      if (kind === "desired_outcome" && draft.case.requestedOutcome !== statement) {
+        draft.case.requestedOutcome = statement;
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      draft.case.stageStatus.clarify_upload = "reviewed";
+      draft.case.stageStatus.confirm = "needs_review";
+      draft.case.stageStatus.review_support = "needs_review";
+    }
+  });
+
+  if (!changed) return { content: "No new cited details were found.", mutated: false };
+  bumpVersion("filled case details from uploaded documents");
+  synchroniseDerivedCase();
+  return { content: "Filled missing case details from uploaded documents.", mutated: true };
 }

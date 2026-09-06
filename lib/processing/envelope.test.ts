@@ -15,6 +15,15 @@ describe("envelopeUntrusted", () => {
     assert.match(body, /page="1"/);
   });
 
+  it("preserves the exact excerpt id so model citations can resolve to stored passages", () => {
+    const { body, nonce } = envelopeUntrusted([
+      { excerptId: "e_exact_123", documentId: "d1", fileName: "quote.pdf", page: 1, text: "Total S$2,000" },
+    ]);
+
+    assert.match(body, /excerptId="e_exact_123"/);
+    assert.match(untrustedContentRules(nonce), /Only cite excerptId values/);
+  });
+
   it("uses a fresh nonce per request so one document cannot learn the next fence", () => {
     const a = envelopeUntrusted([{ documentId: "d1", fileName: "a.pdf", text: "x" }]);
     const b = envelopeUntrusted([{ documentId: "d1", fileName: "a.pdf", text: "x" }]);

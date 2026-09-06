@@ -10,6 +10,7 @@
 
 import { UPLOAD_LIMITS } from "@/lib/contracts";
 import { ingestDocument } from "@/lib/processing/ingest";
+import { reconcileCaseFromDocuments } from "@/lib/agent/document-reconciliation";
 import { bumpVersion, getCase, patchCase } from "@/lib/store";
 import { synchroniseDerivedCase } from "@/lib/workflow";
 
@@ -92,13 +93,35 @@ export async function POST(request: Request) {
 
   // New material can change what the record supports, so anything derived from
   // the previous version needs another look.
-  const version = bumpVersion(`uploaded ${results.length} file(s)`);
+  bumpVersion(`uploaded ${results.length} file(s)`);
+  let reconciliation: {
+    status: "completed" | "unavailable";
+    mutated: boolean;
+    message: string;
+  };
+  try {
+    const reconciled = await reconcileCaseFromDocuments();
+    reconciliation = {
+      status: "completed",
+      mutated: reconciled.mutated,
+      message: reconciled.content,
+    };
+  } catch {
+    // The files are still safely stored and readable. Model failure must not
+    // turn a successful upload into a lost upload or a fabricated extraction.
+    reconciliation = {
+      status: "unavailable",
+      mutated: false,
+      message: "Your files were read, but automatic case-detail extraction was unavailable. You can try again by re-uploading them.",
+    };
+  }
   synchroniseDerivedCase();
 
   const skipped = files.length - Math.min(files.length, remaining);
   return Response.json({
-    caseVersion: version,
+    caseVersion: getCase().case.version,
     results,
+    reconciliation,
     skipped: skipped > 0 ? `${skipped} file(s) were not accepted: this case is at its file limit.` : null,
   });
 }

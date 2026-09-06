@@ -10,19 +10,24 @@ Aisha Rahman paid Northstar Bathroom Works S$8,400 for a bathroom renovation due
 
 1. Run `npm run dev` and open `http://127.0.0.1:3000`.
 2. Click **Start a new case**. Do not reuse an earlier browser case.
-3. Upload the five numbered PDF files in this folder. Wait until all five say they were read.
 
 ## AI conversation
 
-1. Paste the full contents of `01-PASTE-STORY.txt` into **Talk it through** and send it once.
-2. Paste the full contents of `02-PASTE-LINKING.txt` and send it once.
-3. The linking reply should name all five files. If it says no passage IDs were supplied, resend only `02-PASTE-LINKING.txt`; it explicitly distinguishes excerpt IDs (`e_`) from document IDs (`d_`).
+1. Click the microphone and say the short, natural introduction in `00-SPEAK-THIS.txt`. You do not need to recite IDs, addresses, exact dates or arithmetic.
+2. After the assistant records the outline, it shows **Upload your documents**. This handoff is state-driven: it appears after a substantive case fact exists and the case has no files.
+3. Upload the five numbered PDF files in this folder together. Keep the page open while the button says **Reading and updating your case…**.
+4. Wait for the green **Case details updated from your files** panel. The upload automatically extracts missing parties, IDs, addresses, dates, amounts and events, links exact passages, refreshes evidence, and regenerates the CJTS worksheet. No second AI prompt is required.
+5. Open **Review details** and confirm the document-filled entries against the originals.
+
+For this demo flow, readable cited documents are the source of truth. If the short spoken outline differs from an uploaded document, the document-backed name, date, amount, category or fact replaces the spoken value in the worksheet and CJTS entry guide. Uncited model output is still rejected.
+
+`01-PASTE-STORY.txt` remains available as a no-microphone fallback. `02-PASTE-LINKING.txt` is now only a recovery prompt for older saved cases created before automatic reconciliation.
 
 ## Review from start to finish
 
-1. **Your documents:** confirm that all five files are extracted and none is flagged.
+1. **Your documents:** confirm that all five files say **Read**, the green update panel appears, and none is flagged.
 2. **Check the facts:** confirm each accurate fact. Pay special attention to the exact completion date, the two S$4,200 payments, the S$1,000 refund, and the S$7,400 requested amount.
-3. **What your files show:** expect at least four green supported rows after the AI has linked excerpts. The refund and the contractor's alternative account may keep one or two rows amber; that is intentional and makes the demo credible. Open **Show me why** on at least the agreement, what went wrong, and loss/remedy rows to demonstrate provenance.
+3. **What your files show:** expect green supported rows without sending a linking prompt. The refund and the contractor's alternative account may keep some rows amber; that is intentional and makes the demo credible. Open **Show me why** on the agreement and loss/remedy rows to demonstrate provenance.
 4. **Check the filing route:** click **Check current case**, then **Mark reviewed**. The claim is a service claim for S$7,400, has an exact 30 June 2026 date, and records a Singapore respondent, so the rules-based result should read **Appears within supported route**.
 5. **Next steps:** choose **Prepare to file**. If it is disabled, return to the route page and refresh after confirming all facts; any later fact edit makes the route stale.
 6. Review the preparation tasks in order and mark each reviewed when its prerequisite is complete.
