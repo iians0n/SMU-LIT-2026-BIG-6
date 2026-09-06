@@ -1,6 +1,6 @@
-# Casepath
+<img src="casepath-banner.png" alt="Casepath — turn a messy dispute into a clear, source-linked path forward" width="100%">
 
-**Turn a messy dispute into a clear, source-linked path forward.**
+# Casepath
 
 Casepath is a preparation workspace for people who are about to represent themselves in Singapore's Small Claims Tribunals (SCT). It helps a self-represented person (SRP) turn a stressful story and a pile of receipts, screenshots, and PDFs into a structured, source-linked case record — and a practical CJTS handoff pack — without ever pretending to be their lawyer.
 
@@ -73,6 +73,15 @@ Casepath guides a user through one calm, four-stage workflow — explain, eviden
 <img src="05-cjts-download.png" alt="Review and download screen for the filled CJTS entry guide" width="100%">
 
 </td>
+</tr>
+<tr>
+<td width="50%">
+
+**Sample output — a filled page from the generated CJTS entry guide**
+<img src="casepath-cjts-guide-sample.png" alt="A generated CJTS entry guide page showing the respondent's particulars, with fields Casepath cannot know left marked 'Enter on CJTS'" width="100%">
+
+</td>
+<td width="50%"></td>
 </tr>
 </table>
 
