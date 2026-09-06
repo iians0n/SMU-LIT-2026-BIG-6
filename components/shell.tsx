@@ -8,26 +8,18 @@ import {
   ChevronDown,
   CircleHelp,
   ClipboardCheck,
-  FileArchive,
   FileSearch,
-  FolderOpen,
   LayoutGrid,
-  Menu,
-  MessagesSquare,
   Route,
-  Scale,
-  ShieldCheck,
-  UserRound,
-  X,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useCase } from '@/components/case-provider';
 
 const primary = [
-  ['/', 'Start', MessagesSquare],
-  ['/documents', 'Add documents', FolderOpen],
-  ['/chronology', 'Review details', UserRound],
-  ['/prepare', 'Download PDF', FileArchive],
+  ['/', 'Tell your story'],
+  ['/documents', 'Add documents'],
+  ['/chronology', 'Review details'],
+  ['/prepare', 'Download PDF'],
 ] as const;
 
 const more = [
@@ -39,9 +31,30 @@ const more = [
   ['/verification', 'Activity history', ClipboardCheck],
 ] as const;
 
-function Navigation({ close }: { close?: () => void }) {
+function CasepathMark() {
+  return (
+    <svg viewBox="0 0 40 40" role="img" aria-label="Casepath">
+      <path d="M29 7H17.5A11.5 11.5 0 0 0 6 18.5v3A11.5 11.5 0 0 0 17.5 33H27" className="brand-c" />
+      <circle cx="13" cy="20" r="2.5" className="brand-dot" />
+      <path d="M15.5 20h6.2l3.6 3.7" className="brand-route" />
+      <path d="m24.7 23.5 2.9 2.9 6.2-7.3" className="brand-check" />
+    </svg>
+  );
+}
+
+function activeStage(path: string): number | null {
+  if (path === '/') return 0;
+  if (path === '/documents' || path === '/evidence') return 1;
+  if (['/chronology', '/route', '/options', '/dashboard', '/verification'].includes(path)) return 2;
+  if (path === '/prepare') return 3;
+  return null;
+}
+
+function Journey() {
   const path = usePathname();
   const { record, workflow } = useCase();
+  const current = activeStage(path);
+
   const complete = (href: string): boolean => {
     if (!record || !workflow) return false;
     if (href === '/') return record.facts.length > 0 || record.parties.length > 0;
@@ -51,13 +64,6 @@ function Navigation({ close }: { close?: () => void }) {
     if (href === '/chronology') {
       return record.facts.length > 0 && record.facts.every((fact) => fact.confirmedByUser || fact.unknown) && !record.facts.some((fact) => fact.disputed);
     }
-    if (href === '/evidence') {
-      return record.documents.length > 0 && record.issues.length > 0 && record.issues.every((issue) => issue.sourceCaseVersion === record.version);
-    }
-    if (href === '/route') {
-      return workflow.route.sourceCaseVersion === record.version && workflow.route.reviewed;
-    }
-    if (href === '/options') return workflow.option !== null;
     if (href === '/prepare') {
       const populated = workflow.draft.fields.filter((field) => field.value);
       return workflow.draft.sourceCaseVersion === record.version &&
@@ -70,132 +76,105 @@ function Navigation({ close }: { close?: () => void }) {
   };
 
   return (
-    <>
-      <div className="side-heading">Your checklist</div>
-      <nav className="side-nav" aria-label="Preparation stages">
-        {primary.map(([href, label, Icon]) => {
+    <nav className="journey" aria-label="Case preparation steps">
+      {primary.map(([href, label], index) => {
+        const isComplete = complete(href);
+        const isCurrent = current === index;
+        return (
+          <Link
+            key={href}
+            href={href}
+            className="journey-link"
+            aria-current={isCurrent ? 'step' : undefined}
+            data-complete={isComplete || undefined}
+          >
+            <span className="journey-number" aria-hidden="true">
+              {isComplete && !isCurrent ? <Check size={17} strokeWidth={2.6} /> : index + 1}
+            </span>
+            <span className="journey-label">{label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+function MoreMenu() {
+  const path = usePathname();
+  const { record, workflow } = useCase();
+  const menu = useRef<HTMLDetailsElement>(null);
+  const onAdvancedPage = more.some(([href]) => href === path);
+
+  const complete = (href: string): boolean => {
+    if (!record || !workflow) return false;
+    if (href === '/evidence') {
+      return record.documents.length > 0 && record.issues.length > 0 && record.issues.every((issue) => issue.sourceCaseVersion === record.version);
+    }
+    if (href === '/route') {
+      return workflow.route.sourceCaseVersion === record.version && workflow.route.reviewed;
+    }
+    if (href === '/options') return workflow.option !== null;
+    return false;
+  };
+
+  useEffect(() => {
+    menu.current?.removeAttribute('open');
+  }, [path]);
+
+  return (
+    <details ref={menu} className="tools-menu" data-active={onAdvancedPage || undefined}>
+      <summary>
+        <span>More</span>
+        <ChevronDown size={16} aria-hidden="true" />
+      </summary>
+      <nav className="tools-menu-panel" aria-label="More tools">
+        {more.map(([href, label, Icon]) => {
           const isComplete = complete(href);
           return (
             <Link
               key={href}
               href={href}
-              onClick={close}
-              className="side-link"
               aria-current={path === href ? 'page' : undefined}
               data-complete={isComplete || undefined}
+              onClick={() => menu.current?.removeAttribute('open')}
             >
-              <span className="side-icon" aria-hidden="true">
-                {isComplete ? <Check size={15} strokeWidth={2.5} /> : <Icon size={18} />}
-              </span>
+              {isComplete ? <Check size={18} strokeWidth={2.6} aria-hidden="true" /> : <Icon size={18} aria-hidden="true" />}
               <span>{label}</span>
             </Link>
           );
         })}
       </nav>
-
-      <details className="side-more" open={more.some(([href]) => href === path) || undefined}>
-        <summary>
-          <span>More tools</span>
-          <ChevronDown size={16} aria-hidden="true" />
-        </summary>
-        <nav className="side-nav" aria-label="More tools">
-          {more.map(([href, label, Icon]) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={close}
-              className="side-link side-link-secondary"
-              aria-current={path === href ? 'page' : undefined}
-            >
-              <span className="side-icon" aria-hidden="true"><Icon size={18} /></span>
-              <span>{label}</span>
-            </Link>
-          ))}
-        </nav>
-      </details>
-
-      <div className="side-spacer" />
-
-      <div className="privacy-note">
-        <ShieldCheck size={17} aria-hidden="true" />
-        <span>Nothing is filed automatically.<br /><small>You choose what to download or send.</small></span>
-      </div>
-    </>
+    </details>
   );
 }
 
 export function Shell({ children }: { children: React.ReactNode }) {
-  const path = usePathname();
-  const [mobile, setMobile] = useState(false);
-  const menuClose = useRef<HTMLButtonElement>(null);
-  const current = [...primary, ...more].find(([href]) => href === path);
-
-  useEffect(() => {
-    if (!mobile) return;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMobile(false);
-    };
-    document.addEventListener('keydown', closeOnEscape);
-    document.body.style.overflow = 'hidden';
-    const focusFrame = window.requestAnimationFrame(() => menuClose.current?.focus());
-    return () => {
-      window.cancelAnimationFrame(focusFrame);
-      document.removeEventListener('keydown', closeOnEscape);
-      document.body.style.overflow = '';
-    };
-  }, [mobile]);
-
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">Skip to content</a>
 
-      <aside className="sidebar">
-        <Link href="/" className="brand" aria-label="Casepath home">
-          <span className="brand-mark" aria-hidden="true"><Scale size={18} /></span>
-          <span>Casepath</span>
-        </Link>
-        <Navigation />
-      </aside>
-
-      {mobile && (
-        <>
-          <button className="drawer-scrim" tabIndex={-1} aria-hidden="true" onClick={() => setMobile(false)} />
-          <aside className="drawer" id="mobile-navigation" role="dialog" aria-modal="true" aria-label="Navigation menu">
-            <div className="drawer-head">
-              <span className="brand drawer-brand">
-                <span className="brand-mark" aria-hidden="true"><Scale size={18} /></span>
-                <span>Casepath</span>
-              </span>
-              <button ref={menuClose} className="button button-quiet icon-button" onClick={() => setMobile(false)} aria-label="Close menu">
-                <X size={20} aria-hidden="true" />
-              </button>
-            </div>
-            <Navigation close={() => setMobile(false)} />
-          </aside>
-        </>
-      )}
-
-      <main className="main-frame" id="main-content" inert={mobile ? true : undefined}>
-        <header className="topbar">
-          <div className="row-start topbar-start">
-            <button
-              className="button button-quiet icon-button mobile-menu"
-              onClick={() => setMobile(true)}
-              aria-label="Open menu"
-              aria-expanded={mobile}
-              aria-controls="mobile-navigation"
-            >
-              <Menu size={21} aria-hidden="true" />
-            </button>
-            <div className="topbar-title">{current?.[1] ?? 'Casepath'}</div>
-          </div>
-          <div className="topbar-actions">
-            <Link className="button button-quiet" href="/sources">
-              <CircleHelp size={18} aria-hidden="true" /><span>Help</span>
+      <header className="site-header">
+        <div className="site-header-inner">
+          <Link href="/" className="brand" aria-label="Casepath home">
+            <span className="brand-mark"><CasepathMark /></span>
+            <span>Casepath</span>
+          </Link>
+          <div className="header-actions">
+            <Link className="header-link" href="/sources">
+              <CircleHelp size={19} aria-hidden="true" />
+              <span>Help</span>
             </Link>
-
+            <span className="header-divider" aria-hidden="true" />
+            <MoreMenu />
           </div>
-        </header>
+        </div>
+      </header>
+
+      <div className="journey-bar">
+        <div className="journey-inner"><Journey /></div>
+      </div>
+
+      <main className="main-frame" id="main-content">
         <div className="content">{children}</div>
       </main>
     </div>

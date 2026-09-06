@@ -2,7 +2,25 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowRight, CheckCircle2, CircleAlert, Mic, Paperclip, RotateCcw, Send, Square } from 'lucide-react';
+import {
+  ArrowRight,
+  CalendarClock,
+  CalendarDays,
+  CheckCircle2,
+  ChevronRight,
+  CircleAlert,
+  ClipboardList,
+  FileText,
+  HandHeart,
+  MessageSquareText,
+  Mic,
+  Paperclip,
+  RotateCcw,
+  ShieldCheck,
+  Square,
+  UserRound,
+  UsersRound,
+} from 'lucide-react';
 import { useCase } from '@/components/case-provider';
 import { ViewState } from '@/components/view-state';
 import { NOT_A_LAWYER } from '@/lib/plain-language';
@@ -23,7 +41,18 @@ function formGroupName(name: string): string {
   if (name.startsWith('A.')) return 'About you';
   if (name.startsWith('B.')) return 'Other side';
   if (name.startsWith('C.')) return 'Your claim';
-  return 'Needed when filing';
+  return 'Filing details';
+}
+
+function FormGroupIcon({ name }: { name: string }) {
+  const Icon = name.startsWith('A.')
+    ? UserRound
+    : name.startsWith('B.')
+      ? UsersRound
+      : name.startsWith('C.')
+        ? FileText
+        : CalendarClock;
+  return <Icon size={19} aria-hidden="true" />;
 }
 
 /**
@@ -305,25 +334,46 @@ function Chat() {
     <div className="chat-layout">
       <div className="chat-main">
         <div className="chat-scroll" role="log" aria-live="polite" aria-label="Conversation">
-          {turns.map((turn, index) => (
-            <div key={index} className={`bubble bubble-${turn.role}`}>
-              {turn.content.split('\n').map((line, lineIndex) => (
-                <p key={lineIndex} style={{ margin: lineIndex ? '10px 0 0' : 0 }}>{line}</p>
-              ))}
-              {turn.actions?.map((action) => (
-                <span key={action} className="bubble-action">{action}</span>
-              ))}
-              {turn.nextSteps?.length ? (
-                <div className="bubble-next-steps" aria-label="What to do next">
-                  {turn.nextSteps.map((step) => (
-                    <Link key={step.href} href={step.href} className="bubble-next-step">
-                      {step.label}<ArrowRight size={17} aria-hidden="true" />
-                    </Link>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ))}
+          {turns.map((turn, index) => {
+            if (index === 0 && turn.role === 'assistant') {
+              return (
+                <section key={index} className="intake-welcome" aria-labelledby="intake-title">
+                  <div className="intake-heading">
+                    <span className="intake-heading-icon" aria-hidden="true"><MessageSquareText size={25} /></span>
+                    <div>
+                      <h1 id="intake-title">Tell us what happened</h1>
+                      <p>Share the basics in your own words. You can type or speak.</p>
+                    </div>
+                  </div>
+                  <div className="intake-prompts" aria-label="Details to include">
+                    <span><UsersRound size={20} aria-hidden="true" />Who is involved?</span>
+                    <span><CalendarDays size={20} aria-hidden="true" />What happened?</span>
+                    <span><HandHeart size={20} aria-hidden="true" />What would make this right?</span>
+                  </div>
+                </section>
+              );
+            }
+
+            return (
+              <div key={index} className={`bubble bubble-${turn.role}`}>
+                {turn.content.split('\n').map((line, lineIndex) => (
+                  <p key={lineIndex} style={{ margin: lineIndex ? '10px 0 0' : 0 }}>{line}</p>
+                ))}
+                {turn.actions?.map((action) => (
+                  <span key={action} className="bubble-action">{action}</span>
+                ))}
+                {turn.nextSteps?.length ? (
+                  <div className="bubble-next-steps" aria-label="What to do next">
+                    {turn.nextSteps.map((step) => (
+                      <Link key={step.href} href={step.href} className="bubble-next-step">
+                        {step.label}<ArrowRight size={17} aria-hidden="true" />
+                      </Link>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
           {busy && <div className="bubble bubble-assistant bubble-thinking">Thinking…</div>}
           {error && (
             <div className="bubble bubble-error" role="alert">
@@ -393,9 +443,9 @@ function Chat() {
                 void send(draft);
               }
             }}
-            placeholder="Type your answer, or use the microphone…"
+            placeholder="Type your answer…"
             aria-label="Your message"
-            rows={2}
+            rows={3}
             disabled={busy}
           />
           <div className="chat-buttons">
@@ -425,7 +475,7 @@ function Chat() {
               <span>{live ? 'Stop' : 'Speak'}</span>
             </button>
             <button type="submit" className="chat-send" disabled={busy || !draft.trim()}>
-              <Send size={20} aria-hidden="true" /> Send
+              Continue <ArrowRight size={19} aria-hidden="true" />
             </button>
           </div>
         </form>
@@ -434,11 +484,14 @@ function Chat() {
 
       <aside className="chat-side">
         <div className="form-panel-heading">
-          <div>
-            <h2>Your details</h2>
-            <p>Fills automatically as you talk.</p>
+          <div className="form-panel-title">
+            <span className="form-panel-icon" aria-hidden="true"><ClipboardList size={22} /></span>
+            <div>
+              <h2>Your case</h2>
+              <p>Details fill in as you talk.</p>
+            </div>
           </div>
-          <span className="form-count">{form ? `${form.filled}/${form.total}` : ''}</span>
+          <span className="form-count">{form ? `${form.filled} of ${form.total}` : ''}</span>
         </div>
         {form && (
           <div
@@ -472,8 +525,14 @@ function Chat() {
             return (
               <details key={group.name} className="form-group">
                 <summary>
-                  <span>{formGroupName(group.name)}</span>
-                  <span>{required.length ? `${completed}/${required.length}` : 'Later'}</span>
+                  <span className="form-group-main">
+                    <span className="form-group-icon"><FormGroupIcon name={group.name} /></span>
+                    <span>{formGroupName(group.name)}</span>
+                  </span>
+                  <span className="form-group-end">
+                    <span>{required.length ? `${completed} of ${required.length}` : 'Later'}</span>
+                    <ChevronRight size={18} aria-hidden="true" />
+                  </span>
                 </summary>
                 <div className="form-group-fields">
                   {group.fields.map((f) => (
@@ -504,6 +563,11 @@ function Chat() {
             );
           })
         )}
+
+        <div className="form-privacy">
+          <ShieldCheck size={20} aria-hidden="true" />
+          <span>Nothing is filed automatically.</span>
+        </div>
 
         <details className="form-about">
           <summary>About this worksheet</summary>
