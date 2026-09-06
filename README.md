@@ -1,6 +1,6 @@
-# Casepath
+<img src="casepath-banner.png" alt="Casepath — turn a messy dispute into a clear, source-linked path forward" width="100%">
 
-**Turn a messy dispute into a clear, source-linked path forward.**
+# Casepath
 
 Casepath is a preparation workspace for people who are about to represent themselves in Singapore's Small Claims Tribunals (SCT). It helps a self-represented person (SRP) turn a stressful story and a pile of receipts, screenshots, and PDFs into a structured, source-linked case record — and a practical CJTS handoff pack — without ever pretending to be their lawyer.
 
